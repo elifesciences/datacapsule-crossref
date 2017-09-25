@@ -1,0 +1,4 @@
+requests==2.18.3
+requests-futures==0.9.7
+six==1.10.0
+tqdm==4.11.2

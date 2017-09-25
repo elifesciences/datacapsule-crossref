@@ -1,0 +1,9 @@
+/.temp
+/.cache
+/.config
+/.vscode
+/venv
+
+/datacapsule_crossref.egg-info
+
+*.pyc
