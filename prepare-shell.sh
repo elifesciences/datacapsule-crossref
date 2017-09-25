@@ -6,6 +6,7 @@
 set -e
 
 DATA_PATH=data
+TEMP_DIR=.temp
 
 if [ -f .config ]; then
   source .config
