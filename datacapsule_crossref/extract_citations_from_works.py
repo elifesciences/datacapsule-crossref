@@ -31,11 +31,14 @@ def get_args_parser():
   )
   return parser
 
+def clean_doi(doi):
+  return doi.strip().replace('\n', ' ') if doi else None
+
 def extract_citations_from_work(work):
-  doi = work.get('DOI')
+  doi = clean_doi(work.get('DOI'))
   references = work.get('reference', [])
   citation_dois = [r.get('DOI') for r in references]
-  citation_dois = [doi for doi in citation_dois if doi]
+  citation_dois = [clean_doi(doi) for doi in citation_dois if doi]
   return doi, citation_dois
 
 def extract_citations_from_response(response):
