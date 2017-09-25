@@ -6,6 +6,7 @@ import os
 import json
 from zipfile import ZipFile
 import codecs
+import multiprocessing as mp
 
 from tqdm import tqdm
 
@@ -51,20 +52,27 @@ def extract_citations_from_response(response):
   for work in items:
     yield extract_citations_from_work(work)
 
-def iter_zip_citations(input_file):
-  logger = get_logger()
-
-  utf8_reader = codecs.getreader("utf-8")
-
+def read_zip_to_queue(input_file, queue):
   with ZipFile(input_file, 'r') as zip_f:
     names = zip_f.namelist()
-    logger.info('files: %s', len(names))
+    get_logger().info('files: %s', len(names))
     for name in tqdm(names):
-      with zip_f.open(name) as zipped_f:
-        response = json.load(utf8_reader(zipped_f))
-        for doi, citation_dois in extract_citations_from_response(response):
-          if doi:
-            yield doi, citation_dois
+      queue.put(zip_f.read(name))
+  queue.put(None)
+
+def iter_zip_citations(input_file):
+  response_queue = mp.Queue(10)
+  zip_process = mp.Process(target=read_zip_to_queue, args=(input_file, response_queue))
+  zip_process.start()
+
+  while True:
+    response = response_queue.get()
+    if response is None:
+      break
+    response = json.loads(response.decode('utf-8'))
+    for doi, citation_dois in extract_citations_from_response(response):
+      if doi:
+        yield doi, citation_dois
 
 def flatten_citations(citations):
   for doi, citation_dois in citations:
