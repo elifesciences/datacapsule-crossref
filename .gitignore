@@ -3,6 +3,7 @@
 /.config
 /.vscode
 /venv
+/data
 
 /datacapsule_crossref.egg-info
 
