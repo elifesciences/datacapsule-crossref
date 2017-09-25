@@ -27,12 +27,16 @@ def get_args_parser():
   )
   parser.add_argument(
     '--output-file', type=str, required=True,
-    help='path to output file (csv)'
+    help='path to output file (csv or tsv)'
+  )
+  parser.add_argument(
+    '--delimiter', type=str, required=False,
+    help='output file delimiter (otherwise determined by filename)'
   )
   return parser
 
 def clean_doi(doi):
-  return doi.strip().replace('\n', ' ') if doi else None
+  return doi.strip().replace('\n', ' ').replace('\t', ' ') if doi else None
 
 def extract_citations_from_work(work):
   doi = clean_doi(work.get('DOI'))
@@ -78,7 +82,8 @@ def extract_citations_from_works_direct(argv):
     ['citing_doi', 'cited_doi'],
     flatten_citations(
       iter_zip_citations(args.input_file)
-    )
+    ),
+    delimiter=args.delimiter
   )
 
 def main(argv=None):

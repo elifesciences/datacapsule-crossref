@@ -4,8 +4,8 @@ set -e
 
 source prepare-shell.sh
 
-CITATIONS_FILE=$DATA_PATH/crossref-works-citations.csv.gz
-CITATIONS_BACKUP_FILE=$DATA_PATH/crossref-works-citations.csv.gz.backup
+CITATIONS_FILE=$DATA_PATH/crossref-works-citations.tsv.gz
+CITATIONS_BACKUP_FILE=$DATA_PATH/crossref-works-citations.tsv.gz.backup
 
 if [ -f "$CITATIONS_BACKUP_FILE" ]; then
   echo "Backup file already exists: $CITATIONS_BACKUP_FILE (please confirm and delete it or rename to original)"

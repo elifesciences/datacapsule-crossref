@@ -6,7 +6,7 @@ source prepare-shell.sh
 
 RUN_ARGS=(
   --input-file $DATA_PATH/crossref-works.zip
-  --output-file $DATA_PATH/crossref-works-citations.csv.gz
+  --output-file $DATA_PATH/crossref-works-citations.tsv.gz
   $@
 )
 
