@@ -44,6 +44,11 @@ def get_args_parser():
     action='store_true',
     help='specify this flag, to enable multi processing'
   )
+  parser.add_argument(
+    '--provenance', required=True,
+    action='store_true',
+    help='include provenance information (i.e. source filename)'
+  )
   return parser
 
 def clean_doi(doi):
@@ -67,15 +72,15 @@ def read_zip_to_queue(input_file, output_queue, num_output_processes):
     names = zip_f.namelist()
     get_logger().info('files: %s', len(names))
     for name in tqdm(names, smoothing=0.1):
-      output_queue.put(zip_f.read(name))
+      output_queue.put((name, zip_f.read(name)))
   for _ in range(num_output_processes):
     output_queue.put(None)
 
 def extract_citations_to_queue(input_queue, output_queue):
-  for item in iter(input_queue.get, None):
+  for name, item in iter(input_queue.get, None):
     response = json.loads(item.decode('utf-8'))
     output_queue.put([
-      (doi, citation_dois)
+      (name, doi, citation_dois)
       for doi, citation_dois in extract_citations_from_response(response)
     ])
   output_queue.put(None)
@@ -121,14 +126,14 @@ def iter_zip_citations(input_file, num_workers=None, multi_processing=None):
     if item is None:
       workers_running -= 1
       continue
-    for doi, citation_dois in item:
+    for name, doi, citation_dois in item:
       if doi:
-        yield doi, citation_dois
+        yield name, doi, citation_dois
 
 def flatten_citations(citations):
-  for doi, citation_dois in citations:
+  for name, doi, citation_dois in citations:
     for cited_doi in citation_dois:
-      yield doi, cited_doi
+      yield name, doi, cited_doi
 
 def extract_citations_from_works_direct(argv):
   args = get_args_parser().parse_args(argv)
@@ -138,18 +143,28 @@ def extract_citations_from_works_direct(argv):
 
   get_logger().info('output_file: %s', output_file)
 
-  write_csv(
-    output_file,
-    ['citing_doi', 'cited_doi'],
-    flatten_citations(
-      iter_zip_citations(
-        args.input_file,
-        num_workers=args.num_workers,
-        multi_processing=args.multi_processing
-      )
-    ),
-    delimiter=args.delimiter
+  flattened_citations = flatten_citations(
+    iter_zip_citations(
+      args.input_file,
+      num_workers=args.num_workers,
+      multi_processing=args.multi_processing
+    )
   )
+
+  if args.provenance:
+    write_csv(
+      output_file,
+      ['citing_doi', 'cited_doi', 'provenance'],
+      ((citing_doi, cited_doi, name) for name, citing_doi, cited_doi in flattened_citations),
+      delimiter=args.delimiter
+    )
+  else:
+    write_csv(
+      output_file,
+      ['citing_doi', 'cited_doi'],
+      ((citing_doi, cited_doi) for _, citing_doi, cited_doi in flattened_citations),
+      delimiter=args.delimiter
+    )
 
 def main(argv=None):
   extract_citations_from_works_direct(argv)
