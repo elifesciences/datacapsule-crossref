@@ -16,6 +16,8 @@ from datacapsule_crossref.utils import (
   write_csv
 )
 
+from datacapsule_crossref.doi_utils import clean_doi
+
 def get_logger():
   return logging.getLogger(__name__)
 
@@ -49,23 +51,26 @@ def get_args_parser():
     action='store_true',
     help='include provenance information (i.e. source filename)'
   )
+  parser.add_argument(
+    '--no-clean-dois', required=False,
+    action='store_true',
+    help='whether to disable DOI cleaning'
+  )
   return parser
 
-def clean_doi(doi):
-  return doi.strip().replace('\n', ' ').replace('\t', ' ') if doi else None
-
-def extract_citations_from_work(work):
-  doi = clean_doi(work.get('DOI'))
+def extract_citations_from_work(work, doi_filter):
+  doi = doi_filter(work.get('DOI'))
   references = work.get('reference', [])
   citation_dois = [r.get('DOI') for r in references]
-  citation_dois = sorted(set([clean_doi(doi) for doi in citation_dois if doi]))
+  citation_dois = sorted(set([doi_filter(doi) for doi in citation_dois if doi]))
   return doi, citation_dois
 
-def extract_citations_from_response(response):
+def extract_citations_from_response(response, clean_doi_enabled):
   message = response.get('message', {})
   items = message.get('items', [])
+  doi_filter = clean_doi if clean_doi_enabled else lambda x: x
   for work in items:
-    yield extract_citations_from_work(work)
+    yield extract_citations_from_work(work, doi_filter)
 
 def read_zip_to_queue(input_file, output_queue, num_output_processes):
   with ZipFile(input_file, 'r') as zip_f:
@@ -76,12 +81,12 @@ def read_zip_to_queue(input_file, output_queue, num_output_processes):
   for _ in range(num_output_processes):
     output_queue.put(None)
 
-def extract_citations_to_queue(input_queue, output_queue):
+def extract_citations_to_queue(input_queue, output_queue, clean_doi_enabled):
   for name, item in iter(input_queue.get, None):
     response = json.loads(item.decode('utf-8'))
     output_queue.put([
       (name, doi, citation_dois)
-      for doi, citation_dois in extract_citations_from_response(response)
+      for doi, citation_dois in extract_citations_from_response(response, clean_doi_enabled)
     ])
   output_queue.put(None)
 
@@ -89,7 +94,9 @@ def make_daemon(p):
   p.daemon = True
   return p
 
-def iter_zip_citations(input_file, num_workers=None, multi_processing=None):
+def iter_zip_citations(
+  input_file, num_workers=None, multi_processing=None, clean_doi_enabled=False):
+
   cpu_count = mp.cpu_count()
   if num_workers is None:
     # substract 2: one for the producer and one for the main (output)
@@ -112,7 +119,7 @@ def iter_zip_citations(input_file, num_workers=None, multi_processing=None):
   for _ in range(num_workers):
     make_daemon(P(
       target=extract_citations_to_queue,
-      args=(response_queue, citations_queue)
+      args=(response_queue, citations_queue, clean_doi_enabled)
     )).start()
 
   make_daemon(P(
@@ -147,7 +154,8 @@ def extract_citations_from_works_direct(argv):
     iter_zip_citations(
       args.input_file,
       num_workers=args.num_workers,
-      multi_processing=args.multi_processing
+      multi_processing=args.multi_processing,
+      clean_doi_enabled=not args.no_clean_dois
     )
   )
 
