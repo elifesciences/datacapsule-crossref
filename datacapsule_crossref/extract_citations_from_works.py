@@ -47,7 +47,7 @@ def get_args_parser():
     help='specify this flag, to enable multi processing'
   )
   parser.add_argument(
-    '--provenance', required=True,
+    '--provenance', required=False,
     action='store_true',
     help='include provenance information (i.e. source filename)'
   )
@@ -55,6 +55,11 @@ def get_args_parser():
     '--no-clean-dois', required=False,
     action='store_true',
     help='whether to disable DOI cleaning'
+  )
+  parser.add_argument(
+    '--empty-link', required=False,
+    action='store_true',
+    help='whether to include an empty link where no citations are available'
   )
   return parser
 
@@ -137,8 +142,10 @@ def iter_zip_citations(
       if doi:
         yield name, doi, citation_dois
 
-def flatten_citations(citations):
+def flatten_citations(citations, empty_link):
   for name, doi, citation_dois in citations:
+    if not citation_dois and empty_link:
+      yield name, doi, ""
     for cited_doi in citation_dois:
       yield name, doi, cited_doi
 
@@ -156,7 +163,8 @@ def extract_citations_from_works_direct(argv):
       num_workers=args.num_workers,
       multi_processing=args.multi_processing,
       clean_doi_enabled=not args.no_clean_dois
-    )
+    ),
+    empty_link=args.empty_link
   )
 
   if args.provenance:
