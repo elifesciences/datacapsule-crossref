@@ -13,7 +13,8 @@ from tqdm import tqdm
 
 from datacapsule_crossref.utils import (
   makedirs,
-  write_csv
+  write_csv,
+  iter_dict_to_list
 )
 
 from datacapsule_crossref.doi_utils import clean_doi
@@ -61,14 +62,60 @@ def get_args_parser():
     action='store_true',
     help='whether to include an empty link where no citations are available'
   )
+  parser.add_argument(
+    '--debug', required=False,
+    action='store_true',
+    help='whether to include debug information (implies empty-link)'
+  )
   return parser
+
+class Columns(object):
+  DOI = 'citing_doi'
+  CITATION_DOIS = 'citation_dois'
+  CITED_DOI = 'cited_doi'
+  HAS_REFERENCES = 'has_references'
+  NUM_REFERENCES = 'num_references'
+  NUM_CITATIONS_WITHOUT_DOI = 'num_citations_without_doi'
+  NUM_DUPLICATE_CITATION_DOIS = 'num_duplicate_citation_dois'
+  DEBUG = 'debug'
+  PROVENANCE = 'provenance'
+
+
+REGULAR_COLUMNS = [
+  Columns.DOI,
+  Columns.CITED_DOI,
+  Columns.HAS_REFERENCES,
+  Columns.NUM_REFERENCES,
+  Columns.NUM_CITATIONS_WITHOUT_DOI,
+  Columns.NUM_DUPLICATE_CITATION_DOIS
+]
+
+def extract_doi_from_reference(reference):
+  doi = reference.get('DOI')
+  if not doi:
+    get_logger().debug('doi not found in reference: %s', reference)
+  return doi
 
 def extract_citations_from_work(work, doi_filter):
   doi = doi_filter(work.get('DOI'))
+  has_reference = 'reference' in work
   references = work.get('reference', [])
-  citation_dois = [r.get('DOI') for r in references]
-  citation_dois = sorted(set([doi_filter(doi) for doi in citation_dois if doi]))
-  return doi, citation_dois
+  raw_citation_dois = [r.get('DOI') for r in references]
+  filtered_dois = [doi_filter(doi) for doi in raw_citation_dois]
+  non_empty_cleaned_citation_dois = [doi for doi in filtered_dois if doi]
+  references_without_dois = [r for doi, r in zip(filtered_dois, references) if not doi]
+  num_citations_without_doi = len(raw_citation_dois) - len(non_empty_cleaned_citation_dois)
+  unique_citation_dois = sorted(set(non_empty_cleaned_citation_dois))
+  num_duplicate_citation_dois = len(non_empty_cleaned_citation_dois) - len(unique_citation_dois)
+  return {
+    Columns.DOI: doi,
+    Columns.CITATION_DOIS: unique_citation_dois,
+    Columns.HAS_REFERENCES: 1 if has_reference else 0,
+    Columns.NUM_REFERENCES: len(references),
+    Columns.NUM_CITATIONS_WITHOUT_DOI: num_citations_without_doi,
+    Columns.NUM_DUPLICATE_CITATION_DOIS: num_duplicate_citation_dois,
+    Columns.DEBUG: json.dumps(references_without_dois)
+  }
 
 def extract_citations_from_response(response, clean_doi_enabled):
   message = response.get('message', {})
@@ -90,8 +137,11 @@ def extract_citations_to_queue(input_queue, output_queue, clean_doi_enabled):
   for name, item in iter(input_queue.get, None):
     response = json.loads(item.decode('utf-8'))
     output_queue.put([
-      (name, doi, citation_dois)
-      for doi, citation_dois in extract_citations_from_response(response, clean_doi_enabled)
+      {
+        **extracted,
+        Columns.PROVENANCE: name
+      }
+      for extracted in extract_citations_from_response(response, clean_doi_enabled)
     ])
   output_queue.put(None)
 
@@ -134,20 +184,24 @@ def iter_zip_citations(
 
   workers_running = num_workers
   while workers_running > 0:
-    item = citations_queue.get()
-    if item is None:
+    batched_item = citations_queue.get()
+    if batched_item is None:
       workers_running -= 1
       continue
-    for name, doi, citation_dois in item:
-      if doi:
-        yield name, doi, citation_dois
+    for item in batched_item:
+      yield item
 
 def flatten_citations(citations, empty_link):
-  for name, doi, citation_dois in citations:
-    if not citation_dois and empty_link:
-      yield name, doi, ""
-    for cited_doi in citation_dois:
-      yield name, doi, cited_doi
+  for item in citations:
+    if empty_link:
+      # won't have the cited_doi but other stats
+      yield item
+    for cited_doi in item.get(Columns.CITATION_DOIS):
+      yield {
+        Columns.DOI: item.get(Columns.DOI),
+        Columns.PROVENANCE: item.get(Columns.PROVENANCE),
+        Columns.CITED_DOI: cited_doi
+      }
 
 def extract_citations_from_works_direct(argv):
   args = get_args_parser().parse_args(argv)
@@ -164,23 +218,23 @@ def extract_citations_from_works_direct(argv):
       multi_processing=args.multi_processing,
       clean_doi_enabled=not args.no_clean_dois
     ),
-    empty_link=args.empty_link
+    empty_link=args.empty_link or args.debug
   )
 
+  columns = REGULAR_COLUMNS.copy()
+
   if args.provenance:
-    write_csv(
-      output_file,
-      ['citing_doi', 'cited_doi', 'provenance'],
-      ((citing_doi, cited_doi, name) for name, citing_doi, cited_doi in flattened_citations),
-      delimiter=args.delimiter
-    )
-  else:
-    write_csv(
-      output_file,
-      ['citing_doi', 'cited_doi'],
-      ((citing_doi, cited_doi) for _, citing_doi, cited_doi in flattened_citations),
-      delimiter=args.delimiter
-    )
+    columns += [Columns.PROVENANCE]
+
+  if args.debug:
+    columns += [Columns.DEBUG]
+
+  write_csv(
+    output_file,
+    columns,
+    iter_dict_to_list(flattened_citations, columns),
+    delimiter=args.delimiter
+  )
 
 def main(argv=None):
   extract_citations_from_works_direct(argv)
