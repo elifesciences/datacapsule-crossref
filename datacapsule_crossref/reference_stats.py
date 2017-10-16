@@ -43,10 +43,13 @@ class CounterWithExamples():
       self.example_map[key].append(example)
 
   def __iter__(self):
-    return (
-      (key, count, self.example_map.get(key))
-      for key, count in iteritems(self.count_map)
-    )
+    return iter(sorted((
+        (key, count, self.example_map.get(key))
+        for key, count in iteritems(self.count_map)
+      ),
+      key=lambda x: x[1],
+      reverse=True
+    ))
 
 def calculate_counts_from_rows(df_batches):
   counter_with_examples = CounterWithExamples(10)
