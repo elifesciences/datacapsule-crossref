@@ -6,7 +6,7 @@ import json
 import sys
 from signal import signal, SIGPIPE, SIG_DFL
 
-from six import iteritems
+from six import iteritems, iterkeys
 import pandas as pd
 
 def get_args_parser():
@@ -33,7 +33,7 @@ class CounterWithExamples():
     self.count_map = dict()
     self.example_map = dict()
     self.limit = limit
-  
+
   def add(self, key, example):
     previous_count = self.count_map.get(key, 0)
     self.count_map[key] = previous_count + 1
@@ -51,20 +51,69 @@ class CounterWithExamples():
       reverse=True
     ))
 
+class TypedCounterWithExample(object):
+  def __init__(self, limit):
+    self.counters_map = {}
+    self.limit = limit
+
+  def add(self, counter_type, key, example):
+    counter_with_examples = self.counters_map.get(counter_type)
+    if counter_with_examples is None:
+      counter_with_examples = CounterWithExamples(self.limit)
+      self.counters_map[counter_type] = counter_with_examples
+    counter_with_examples.add(key, example)
+
+  def __iter__(self):
+    for counter_type in sorted(iterkeys(self.counters_map)):
+      for key, count, examples in self.counters_map[counter_type]:
+        yield counter_type, key, count, examples
+
+
 def calculate_counts_from_rows(df_batches):
-  counter_with_examples = CounterWithExamples(10)
+  typed_counter_with_examples = TypedCounterWithExample(10)
   for df in df_batches:
+    for key, values in [
+      ('publisher', df['publisher']),
+      ('countainer_title', df['container_title']),
+      ('first_subject_area', df['first_subject_area']),
+      ('created', pd.to_datetime(df['created']).dt.year)]:
+      for doi, value in zip(df['doi'], values):
+        typed_counter_with_examples.add(
+          'total_{}'.format(key),
+          value,
+          doi
+        )
+    df_non_oa_reference = df[(df['reference_count'] > 0) & (df['has_references'] == 0)]
+    if len(df_non_oa_reference) > 0:
+      for key, values in [
+        ('publisher', df_non_oa_reference['publisher']),
+        ('countainer_title', df_non_oa_reference['container_title']),
+        ('first_subject_area', df_non_oa_reference['first_subject_area']),
+        ('created', pd.to_datetime(df_non_oa_reference['created']).dt.year)]:
+        for doi, value in zip(df_non_oa_reference['doi'], values):
+          typed_counter_with_examples.add(
+            'non_oa_ref_{}'.format(key),
+            value,
+            doi
+          )
     for doi, debug_json in zip(df['doi'], df['debug']):
       if debug_json and not pd.isnull(debug_json):
         for reference in json.loads(debug_json):
-          counter_with_examples.add(
+          typed_counter_with_examples.add(
+            'key_combination',
             '|'.join(sorted([
               k for k, v in iteritems(reference)
               if v is not None and v != ""
             ])),
             (doi, reference)
           )
-  return counter_with_examples
+          for key in ['year']:
+            typed_counter_with_examples.add(
+              key,
+              reference.get(key),
+              (doi, reference)
+            )
+  return typed_counter_with_examples
 
 def calculate_and_output_counts(argv):
   args = get_args_parser().parse_args(argv)
@@ -77,11 +126,11 @@ def calculate_and_output_counts(argv):
     chunksize=args.batch_size
   )
 
-  counter_with_examples = calculate_counts_from_rows(df_batches)
-  csv_writer.writerow(['key_combination', 'count', 'examples'])
+  typed_counter_with_examples = calculate_counts_from_rows(df_batches)
+  csv_writer.writerow(['type', 'key', 'count', 'examples'])
 
-  for key_combination, count, examples in counter_with_examples:
-    csv_writer.writerow([key_combination, count, json.dumps(examples)])
+  for counter_type, key, count, examples in typed_counter_with_examples:
+    csv_writer.writerow([counter_type, key, count, json.dumps(examples)])
 
 def main(argv=None):
   calculate_and_output_counts(argv)
