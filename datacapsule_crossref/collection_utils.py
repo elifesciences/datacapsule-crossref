@@ -83,3 +83,10 @@ def iter_batch(coll, batch_size):
       batch = []
   if batch:
     yield batch
+
+def peek(iterable):
+  try:
+    first = next(iterable)
+  except StopIteration:
+    return None
+  return first, itertools.chain([first], iterable)
