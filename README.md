@@ -30,8 +30,29 @@ Run:
 ./extract_citations_from_crossref_works.sh
 ```
 
-That will create _data/crossref-works-citations.csv.gz_ a compressed csv file with the following columns:
+That will create _data/crossref-works-citations.tsv.gz_ a compressed tsv file with the following columns:
 
 * _citing_doi_
 * _cited_doi_
 
+# Create Summary Stats
+
+Run:
+
+```bash
+./extract_summaries_from_crossref_works.sh
+```
+
+That will create _data/crossref-works-summaries.tsv.gz_ a compressed tsv file with a number of key features of works (used by the following step).
+
+Run:
+
+```bash
+./citation_stats.sh
+```
+
+That will create the following files with summary stats:
+* _data/crossref-works-summaries-stat.tsv_
+* _data/crossref-works-summaries-by-type-and-publisher-stat.tsv.gz_
+* _data/crossref-works-reference-stat.tsv.gz_
+* _data/crossref-works-citations*.tsv_
