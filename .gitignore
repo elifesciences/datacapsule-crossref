@@ -7,4 +7,5 @@
 
 /datacapsule_crossref.egg-info
 
+.ipynb_checkpoints
 *.pyc
