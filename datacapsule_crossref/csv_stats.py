@@ -6,7 +6,7 @@ import sys
 import logging
 from signal import signal, SIGPIPE, SIG_DFL
 
-from six import iterkeys
+from six import iterkeys, iteritems
 from future.utils import raise_from
 import numpy as np
 import pandas as pd
@@ -30,6 +30,10 @@ def get_args_parser():
     action='store_true',
     help='whether the input contains a header row'
   )
+  parser.add_argument(
+    '--group-by', type=str, required=False,
+    help='group by column'
+  )
   return parser
 
 def filter_none(l):
@@ -42,9 +46,19 @@ def bool_literal_to_number(df):
     return df
 
 def to_numeric_or_input(df):
-   return pd.to_numeric(bool_literal_to_number(df), errors='ignore').dropna()
+  return pd.to_numeric(bool_literal_to_number(df), errors='ignore').dropna()
 
-def calculate_counts_from_df_batches(df_batches):
+def split_and_drop_groupby_column(df, groupby_column):
+  gb = df.groupby(groupby_column)
+  return [
+    (x, gb.get_group(x).drop(groupby_column, axis=1))
+    for x in gb.groups
+  ]
+
+def safe_mean(sum_value, count):
+  return sum_value / count if count else 0
+
+def calculate_counts_from_df_batches(df_batches, groupby_columns=None):
   def update_stats(stats, column):
     try:
       numeric_values = to_numeric_or_input(column).dropna()
@@ -68,37 +82,54 @@ def calculate_counts_from_df_batches(df_batches):
       return stats
     except Exception as e:
       raise_from(RuntimeError('failed to update stats for {}'.format(column)), e)
-  stats_by_column = None
+  stats_by_column_by_group = dict()
   num_columns = None
-  for df in df_batches:
-    if stats_by_column is None:
-      num_columns = len(df.columns)
-      stats_by_column = [dict()] * num_columns
-    stats_by_column = [
-      update_stats(stats_of_column.copy(), df[c])
-      for stats_of_column, c in zip(stats_by_column, df.columns)
-    ]
-  if stats_by_column:
-    stats = {}
-    for i, stats_of_column in enumerate(stats_by_column):
-      if 'sum' in stats_of_column and stats_of_column['count'] > 0:
-        stats_of_column['mean'] = (
-          stats_of_column['sum'] / stats_of_column['count']
-        )
-        stats_of_column['mean_non_zero'] = (
-          stats_of_column['sum'] / stats_of_column['count_non_zero']
-        )
-      for k in iterkeys(stats_of_column):
-        if not k in stats:
-          stats[k] = [None] * num_columns
-        this_stats = stats_of_column[k]
-        stats[k][i] = stats_of_column[k]
+  for df_batch in df_batches:
+    if groupby_columns:
+      for g in groupby_columns:
+        df_batch[g] = df_batch[g].fillna('')
+      df_groups = split_and_drop_groupby_column(df_batch, groupby_columns)
+    else:
+      df_groups = [(None, df_batch)]
+    for g, df in df_groups:
+      stats_by_column = stats_by_column_by_group.get(g)
+      if stats_by_column is None:
+        num_columns = len(df.columns)
+        stats_by_column = [dict()] * num_columns
+      stats_by_column_by_group[g] = [
+        update_stats(stats_of_column.copy(), df[c])
+        for stats_of_column, c in zip(stats_by_column, df.columns)
+      ]
+  if stats_by_column_by_group:
+    stats_by_group = dict()
+    for g, stats_by_column in iteritems(stats_by_column_by_group):
+      stats = stats_by_group.setdefault(g, dict())
+      for i, stats_of_column in enumerate(stats_by_column):
+        if 'sum' in stats_of_column and stats_of_column['count'] > 0:
+          stats_of_column['mean'] = safe_mean(
+            stats_of_column['sum'], stats_of_column['count']
+          )
+          stats_of_column['mean_non_zero'] = safe_mean(
+            stats_of_column['sum'], stats_of_column['count_non_zero']
+          )
+        for k in iterkeys(stats_of_column):
+          if not k in stats:
+            stats[k] = [None] * num_columns
+          stats[k][i] = stats_of_column[k]
+    if not groupby_columns:
+      return stats_by_group[None]
+    return stats_by_group
   else:
     stats = None
   return stats
 
 def calculate_and_output_counts(argv):
   args = get_args_parser().parse_args(argv)
+  groupby_columns = (
+    [s.strip() for s in args.group_by.split(',')]
+    if args.group_by
+    else []
+  )
 
   csv_writer = csv.writer(sys.stdout, delimiter=args.delimiter)
 
@@ -111,14 +142,24 @@ def calculate_and_output_counts(argv):
   if args.header:
     df_first, df_batches = peek(df_batches)
     column_names = list(df_first.columns.values)
-    df_first = None
-    csv_writer.writerow([''] + column_names)
+    del df_first
+    result_column_names = (
+      groupby_columns + ['stat'] + [s for s in column_names if s not in groupby_columns]
+    )
+    csv_writer.writerow(result_column_names)
 
-  stats = calculate_counts_from_df_batches(df_batches)
+  stats = calculate_counts_from_df_batches(df_batches, groupby_columns=groupby_columns)
 
   if stats:
-    for k in sorted(iterkeys(stats)):
-      csv_writer.writerow([k] + stats[k])
+    if groupby_columns:
+      for g in sorted(iterkeys(stats)):
+        g_column_values = list(g) if isinstance(g, tuple) else [g]
+        stats_group = stats[g]
+        for k in sorted(iterkeys(stats_group)):
+          csv_writer.writerow(g_column_values + [k] + stats_group[k])
+    else:
+      for k in sorted(iterkeys(stats)):
+        csv_writer.writerow([k] + stats[k])
 
 def main(argv=None):
   calculate_and_output_counts(argv)

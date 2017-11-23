@@ -1,5 +1,6 @@
 import logging
 
+from six import iteritems
 import pandas as pd
 
 from datacapsule_crossref.csv_stats import (
@@ -98,3 +99,35 @@ class TestCalculateCountsFromDfBatches(object):
     })])
     assert result['count'] == [4]
     assert 'count_non_zero' not in result
+
+  def test_should_count_int_columns_grouped_by_column(self):
+    result = calculate_counts_from_df_batches([pd.DataFrame({
+      'g': ['x', 'y', 'x', 'x'],
+      'a': [1, 2, 10, 11]
+    })], groupby_columns='g')
+    assert result['x']['count'] == [3]
+    assert result['y']['count'] == [1]
+
+  def test_should_count_int_columns_grouped_by_multiple_column(self):
+    result = calculate_counts_from_df_batches([pd.DataFrame({
+      'g1': ['g1_x', 'g1_y', 'g1_x', 'g1_x'],
+      'g2': ['g2_x', 'g2_y', 'g2_y', 'g2_y'],
+      'a': [1, 2, 10, 11]
+    })], groupby_columns=['g1', 'g2'])
+    assert {g: v['count'] for g, v in iteritems(result)} == {
+      ('g1_x', 'g2_x'): [1],
+      ('g1_x', 'g2_y'): [2],
+      ('g1_y', 'g2_y'): [1]
+    }
+
+  def test_should_count_int_columns_grouped_by_multiple_column_with_nan(self):
+    result = calculate_counts_from_df_batches([pd.DataFrame({
+      'g1': ['g1_x', 'g1_y', 'g1_x', 'g1_x'],
+      'g2': ['g2_x', None, 'g2_y', 'g2_y'],
+      'a': [1, 2, 10, 11]
+    })], groupby_columns=['g1', 'g2'])
+    assert {g: v['count'] for g, v in iteritems(result)} == {
+      ('g1_x', 'g2_x'): [1],
+      ('g1_x', 'g2_y'): [2],
+      ('g1_y', ''): [1]
+    }
