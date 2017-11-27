@@ -16,7 +16,8 @@ class TestCalculateCountsFromDfBatches(object):
       pd.DataFrame([], columns=['a', 'b'])
     ])
     assert result == {
-      'count': [0, 0]
+      'count': [0, 0],
+      'count_valid': [0, 0]
     }
 
   def test_should_count_int_columns(self):
@@ -25,11 +26,23 @@ class TestCalculateCountsFromDfBatches(object):
     })])
     assert result['count'] == [4]
 
-  def test_should_count_int_columns_without_nan(self):
+  def test_should_count_valid_int_columns_without_nan(self):
     result = calculate_counts_from_df_batches([pd.DataFrame({
       'a': [1, 2, None, 11]
     })])
-    assert result['count'] == [3]
+    assert result['count_valid'] == [3]
+
+  def test_should_count_numeric_int_columns_without_nan(self):
+    result = calculate_counts_from_df_batches([pd.DataFrame({
+      'a': [1, 2, None, 11]
+    })])
+    assert result['count_numeric'] == [3]
+
+  def test_should_count_int_columns_including_nan(self):
+    result = calculate_counts_from_df_batches([pd.DataFrame({
+      'a': [1, 2, None, 11]
+    })])
+    assert result['count'] == [4]
 
   def test_should_count_bool_as_int_columns(self):
     result = calculate_counts_from_df_batches([pd.DataFrame({
@@ -69,6 +82,12 @@ class TestCalculateCountsFromDfBatches(object):
     })])
     assert result['mean'] == [14 / 4]
 
+  def test_should_calculate_mean_excluding_nan_int_columns(self):
+    result = calculate_counts_from_df_batches([pd.DataFrame({
+      'a': [1, 2, pd.np.nan, 11]
+    })])
+    assert result['mean'] == [14 / 3]
+
   def test_should_calculate_mean_of_non_zero_int_columns(self):
     result = calculate_counts_from_df_batches([pd.DataFrame({
       'a': [1, 2, 0, 11]
@@ -81,17 +100,45 @@ class TestCalculateCountsFromDfBatches(object):
     })])
     assert result['count'] == [4]
 
-  def test_should_count_str_columns_without_nan(self):
+  def test_should_count_valid_str_columns_without_nan(self):
     result = calculate_counts_from_df_batches([pd.DataFrame({
       'a': ['a1', 'a2', pd.np.nan, 'a4']
     })])
-    assert result['count'] == [3]
+    assert result['count_valid'] == [3]
+
+  def test_should_count_str_columns_including_nan(self):
+    result = calculate_counts_from_df_batches([pd.DataFrame({
+      'a': ['a1', 'a2', pd.np.nan, 'a4']
+    })])
+    assert result['count'] == [4]
 
   def test_should_count_str_columns_containing_some_numbers(self):
     result = calculate_counts_from_df_batches([pd.DataFrame({
       'a': ['a1', 'a2', '3', 'a4']
     })])
     assert result['count'] == [4]
+    assert result['count_valid'] == [4]
+    assert 'count_numeric' not in result
+
+  def test_should_count_str_columns_containing_some_numbers_across_batches(self):
+    result = calculate_counts_from_df_batches([pd.DataFrame({
+      'a': ['a1', 'a2']
+    }), pd.DataFrame({
+      'a': ['3', '4']
+    })])
+    assert result['count'] == [4]
+    assert result['count_valid'] == [4]
+    assert 'count_numeric' not in result
+
+  def test_should_count_str_columns_containing_some_numbers_in_first_batch(self):
+    result = calculate_counts_from_df_batches([pd.DataFrame({
+      'a': ['1', '2']
+    }), pd.DataFrame({
+      'a': ['a3', 'a4']
+    })])
+    assert result['count'] == [4]
+    assert result['count_valid'] == [4]
+    assert 'count_numeric' not in result
 
   def test_should_count_str_columns_containing_some_bool(self):
     result = calculate_counts_from_df_batches([pd.DataFrame({
