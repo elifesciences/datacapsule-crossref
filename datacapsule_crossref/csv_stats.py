@@ -61,24 +61,34 @@ def safe_mean(sum_value, count):
 def calculate_counts_from_df_batches(df_batches, groupby_columns=None):
   def update_stats(stats, column):
     try:
-      numeric_values = to_numeric_or_input(column).dropna()
-      if len(numeric_values) > 0 and np.issubdtype(numeric_values.dtype, np.number):
-        stats['min'] = min(filter_none([
-          stats.get('min', None),
-          numeric_values.min()
-        ]))
-        stats['max'] = max(filter_none([
-          stats.get('max', None),
-          numeric_values.max()
-        ]))
-        stats['sum'] = stats.get('sum', 0) + numeric_values.sum()
-        column_count = numeric_values.count()
-        stats['count'] = stats.get('count', 0) + column_count
-        column_count_non_zero = (numeric_values != 0).sum()
-        stats['count_non_zero'] = stats.get('count_non_zero', 0) + column_count_non_zero
-        stats['count_zero'] = stats.get('count_zero', 0) + column_count - column_count_non_zero
-      else:
-        stats['count'] = stats.get('count', 0) + len(column.dropna())
+      stats['count'] = stats.get('count', 0) + len(column)
+      stats['count_valid'] = stats.get('count_valid', 0) + len(column.dropna())
+      column_type = stats.get('type')
+      if column_type != 'str':
+        numeric_values = to_numeric_or_input(column).dropna()
+        if len(numeric_values) > 0 and np.issubdtype(numeric_values.dtype, np.number):
+          stats['type'] = 'numeric'
+          stats['min'] = min(filter_none([
+            stats.get('min', None),
+            numeric_values.min()
+          ]))
+          stats['max'] = max(filter_none([
+            stats.get('max', None),
+            numeric_values.max()
+          ]))
+          stats['sum'] = stats.get('sum', 0) + numeric_values.sum()
+          column_count_numeric = numeric_values.count()
+          stats['count_numeric'] = stats.get('count_numeric', 0) + column_count_numeric
+          column_count_non_zero = (numeric_values != 0).sum()
+          stats['count_non_zero'] = stats.get('count_non_zero', 0) + column_count_non_zero
+          stats['count_zero'] = (
+            stats.get('count_zero', 0) + column_count_numeric - column_count_non_zero
+          )
+        elif len(column):
+          if column_type == 'numeric':
+            for x in {'min', 'max', 'sum', 'count_numeric', 'count_non_zero', 'count_zero'}:
+              del stats[x]
+          stats['type'] = 'str'
       return stats
     except Exception as e:
       raise_from(RuntimeError('failed to update stats for {}'.format(column)), e)
@@ -105,9 +115,9 @@ def calculate_counts_from_df_batches(df_batches, groupby_columns=None):
     for g, stats_by_column in iteritems(stats_by_column_by_group):
       stats = stats_by_group.setdefault(g, dict())
       for i, stats_of_column in enumerate(stats_by_column):
-        if 'sum' in stats_of_column and stats_of_column['count'] > 0:
+        if 'sum' in stats_of_column and stats_of_column['count_numeric'] > 0:
           stats_of_column['mean'] = safe_mean(
-            stats_of_column['sum'], stats_of_column['count']
+            stats_of_column['sum'], stats_of_column['count_numeric']
           )
           stats_of_column['mean_non_zero'] = safe_mean(
             stats_of_column['sum'], stats_of_column['count_non_zero']
