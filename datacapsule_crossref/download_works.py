@@ -65,7 +65,8 @@ def iter_page_responses(base_url, max_retries, start_cursor='*'):
   with FuturesSession(max_workers=10) as session:
     configure_session_retry(
       session=session,
-      max_retries=max_retries
+      max_retries=max_retries,
+      status_forcelist=[500, 502, 503, 504]
     )
 
     def request_page(cursor):
