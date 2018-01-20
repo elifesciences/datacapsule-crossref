@@ -83,8 +83,9 @@ def iter_page_responses(base_url, max_retries, start_cursor='*'):
       # we don't need to wait until the whole response has been received
       raw = response.raw
       raw.decode_content = True
-      content = raw.read()
-      m = next_cursor_pattern.search(content.decode())
+      first_bytes = raw.read(1000)
+      first_chars = first_bytes.decode()
+      m = next_cursor_pattern.search(first_chars)
       next_cursor = m.group(1).replace('\\/', '/') if m else None
       logger.debug('next_cursor: %s', next_cursor)
       if next_cursor == previous_cursor:
@@ -99,6 +100,8 @@ def iter_page_responses(base_url, max_retries, start_cursor='*'):
         logger.info('no next_cursor found, reach end')
         future_response = None
 
+      remaining_bytes = raw.read()
+      content = first_bytes + remaining_bytes
       yield next_cursor, content
 
 def save_page_responses(base_url, zip_filename, max_retries, items_per_page, compression):
