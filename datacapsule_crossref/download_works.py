@@ -52,6 +52,10 @@ def get_args_parser():
     help='Zip compression to use (requires Python 3.3+).'
   )
   parser.add_argument(
+    '--email', type=str, required=False,
+    help='email to identify the requests as (see Crossref API etiquette)'
+  )
+  parser.add_argument(
     '--debug', action='store_true',
     help='Enable debug logging'
   )
@@ -174,11 +178,14 @@ def save_page_responses(base_url, zip_filename, max_retries, items_per_page, com
     if pbar:
       pbar.close()
 
-def download_works_direct(zip_filename, batch_size, max_retries, compression):
+def download_works_direct(zip_filename, batch_size, max_retries, compression, email=None):
+  url = 'http://api.crossref.org/works?rows={}'.format(
+    batch_size
+  )
+  if email:
+    url += '&mailto=' + quote(email)
   save_page_responses(
-    'http://api.crossref.org/works?rows={}'.format(
-      batch_size
-    ),
+    url,
     zip_filename=zip_filename,
     max_retries=max_retries,
     items_per_page=batch_size,
@@ -204,7 +211,8 @@ def download_direct(argv):
     output_file,
     batch_size=args.batch_size,
     max_retries=args.max_retries,
-    compression=compression
+    compression=compression,
+    email=args.email
   )
 
 def main(argv=None):
