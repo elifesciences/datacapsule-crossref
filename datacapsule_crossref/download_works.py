@@ -103,7 +103,7 @@ def iter_page_responses(base_url, max_retries, start_cursor='*'):
         future_response = request_page(next_cursor)
         previous_cursor = next_cursor
       else:
-        logger.info('no next_cursor found, reach end')
+        logger.info('no next_cursor found, end reached?')
         future_response = None
 
       remaining_bytes = raw.read()
