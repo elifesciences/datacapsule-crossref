@@ -51,6 +51,10 @@ def get_args_parser():
     default=DEFLATE,
     help='Zip compression to use (requires Python 3.3+).'
   )
+  parser.add_argument(
+    '--debug', action='store_true',
+    help='Enable debug logging'
+  )
   return parser
 
 def iter_page_responses(base_url, max_retries, start_cursor='*'):
@@ -93,6 +97,7 @@ def iter_page_responses(base_url, max_retries, start_cursor='*'):
         future_response = request_page(next_cursor)
         previous_cursor = next_cursor
       else:
+        logger.info('no next_cursor found, reach end')
         future_response = None
 
       remaining_bytes = raw.read()
@@ -180,6 +185,9 @@ def download_works_direct(zip_filename, batch_size, max_retries, compression):
 
 def download_direct(argv):
   args = get_args_parser().parse_args(argv)
+
+  if args.debug:
+    logging.getLogger().setLevel('DEBUG')
 
   output_file = args.output_file
   makedirs(os.path.dirname(output_file), exist_ok=True)
