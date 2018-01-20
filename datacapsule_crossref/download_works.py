@@ -79,6 +79,7 @@ def iter_page_responses(base_url, max_retries, start_cursor='*'):
     previous_cursor = start_cursor
     while future_response:
       response = future_response.result()
+      response.raise_for_status()
 
       # try to find the next cursor in the first response characters
       # we don't need to wait until the whole response has been received
