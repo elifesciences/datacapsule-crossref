@@ -6,7 +6,8 @@ from zipfile import ZipFile
 from apache_beam.io.filesystems import FileSystems
 
 from datacapsule_crossref.stopwatch import (
-  StopWatchRecorder
+  StopWatchRecorder,
+  StopWatch
 )
 
 PRE_X_THRESHOLD = 1800
@@ -62,11 +63,18 @@ def save_item_to_zipfile(item, zf):
   data = json.dumps(item)
   zf.writestr(filename, data)
 
-def save_items_to_zipfile(items, zf):
+def save_items_to_zipfile(items, zf, info=None):
   count = 0
+  stop_watch = StopWatch()
   for item in items:
     save_item_to_zipfile(item, zf)
     count += 1
+    if count % 1000 == 0:
+      get_logger().info(
+        'retrieved 1000 items took %.6fs (%s)',
+        stop_watch.get_elapsed_seconds(reset=True),
+        info
+      )
   return count
 
 def parse_filter_to_dict(filter_str):
@@ -137,7 +145,7 @@ def save_items_from_endpoint_for_filter_to_zipfile(works_endpoint, filter_str, o
   stop_watch_recorder.start('retrieving data')
   with FileSystems.create(output_file) as output_f:
     with ZipFile(output_f, 'w', allowZip64=True) as zf:
-      count = save_items_to_zipfile(items, zf)
+      count = save_items_to_zipfile(items, zf, info=output_file)
   meta_obj['download-finished'] = datetime.now().isoformat()
   meta_obj['count'] = count
   stop_watch_recorder.stop()

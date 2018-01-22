@@ -167,7 +167,8 @@ class TestSaveItemsFromEndpointForFilterToZipfile(object):
               )
               save_items_to_zipfile_mock.assert_called_with(
                 get_works_endpoint_with_filter_mock.return_value,
-                ZipFile.return_value.__enter__()
+                ZipFile.return_value.__enter__(),
+                info=OUTPUT_FILE_1
               )
 
   def test_should_skip_if_file_already_downloaded(self):
