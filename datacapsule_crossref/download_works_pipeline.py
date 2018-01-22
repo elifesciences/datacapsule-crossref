@@ -16,7 +16,8 @@ from datacapsule_crossref.beam_utils.main import (
 )
 
 from datacapsule_crossref.beam_utils.utils import (
-  MapOrLog
+  MapOrLog,
+  PreventFusion
 )
 
 from datacapsule_crossref.download_works_utils import (
@@ -83,7 +84,8 @@ def configure_pipeline(p, opt):
   _ = (
     p |
     beam.Create(target_filter_pairs) |
-    MapOrLog(
+    PreventFusion() |
+    "RetrieveAndSaveWorks" >> MapOrLog(
       RetrieveAndSaveWorks(works_endpoint, opt.output_path),
       error_count=MetricCounters.ERROR
     )
