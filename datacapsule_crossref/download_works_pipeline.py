@@ -5,6 +5,7 @@ import logging
 
 import apache_beam as beam
 from apache_beam.io.filesystems import FileSystems
+from apache_beam.metrics.metric import Metrics
 from apache_beam.options.pipeline_options import PipelineOptions, SetupOptions
 
 from crossref.restful import Works, Etiquette
@@ -12,6 +13,10 @@ from crossref.restful import Works, Etiquette
 from datacapsule_crossref.beam_utils.main import (
   add_cloud_args,
   process_cloud_args
+)
+
+from datacapsule_crossref.beam_utils.utils import (
+  MapOrLog
 )
 
 from datacapsule_crossref.download_works_utils import (
@@ -27,6 +32,10 @@ from datacapsule_crossref.download_works import (
 APPLICATION_NAME = 'DataCapsule Crossref'
 APPLICATION_VERSION = '0.0.1'
 APPLICATION_URL = 'https://github.com/elifesciences/datacapsule-crossref'
+
+class MetricCounters(object):
+  TOTAL = 'total_count'
+  ERROR = 'error_count'
 
 def get_logger():
   return logging.getLogger(__name__)
@@ -64,10 +73,15 @@ def configure_pipeline(p, opt):
   works_endpoint = get_works_endpoint(opt)
   target_filter_map = get_target_filter_map(works_endpoint, opt)
   target_filter_pairs = sorted(target_filter_map.items())
+  total_counter = Metrics.counter('App', MetricCounters.TOTAL)
+  total_counter.inc(len(target_filter_pairs))
   _ = (
     p |
     beam.Create(target_filter_pairs) |
-    beam.Map(RetrieveAndSaveWorks(works_endpoint, opt.output_path))
+    MapOrLog(
+      RetrieveAndSaveWorks(works_endpoint, opt.output_path),
+      error_count=MetricCounters.ERROR
+    )
   )
 
 def add_main_args(parser):
