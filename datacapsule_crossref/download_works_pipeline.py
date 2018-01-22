@@ -9,6 +9,7 @@ from apache_beam.io.filesystems import FileSystems
 from apache_beam.metrics.metric import Metrics
 from apache_beam.options.pipeline_options import PipelineOptions, SetupOptions
 
+import crossref.restful
 from crossref.restful import Works, Etiquette
 
 from datacapsule_crossref.beam_utils.main import (
@@ -155,6 +156,9 @@ def parse_args(argv=None):
 
   if args.debug:
     logging.getLogger().setLevel('DEBUG')
+
+  if args.batch_size:
+    crossref.restful.LIMIT = args.batch_size
 
   process_cloud_args(
     args, args.output_path,
