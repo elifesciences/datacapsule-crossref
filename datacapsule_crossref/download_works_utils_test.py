@@ -16,6 +16,7 @@ from datacapsule_crossref.download_works_utils import (
   CURRENT_KEY
 )
 
+API_URL = 'http://crossref/api'
 FILTER_STR_1 = 'filer1:value1'
 OUTPUT_FILE_1 = 'output_file.zip'
 
@@ -156,6 +157,7 @@ class TestSaveItemsFromEndpointForFilterToZipfile(object):
             with patch.object(m, 'ZipFile') as ZipFile:
               is_already_download_mock.return_value = False
               save_items_to_zipfile_mock.return_value = 123
+              get_works_endpoint_with_filter_mock.return_value.url = API_URL
               save_items_from_endpoint_for_filter_to_zipfile(
                 works_endpoint, FILTER_STR_1, OUTPUT_FILE_1, ZIP_DEFLATED
               )

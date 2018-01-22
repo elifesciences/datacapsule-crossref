@@ -141,7 +141,8 @@ def save_items_from_endpoint_for_filter_to_zipfile(
   stop_watch_recorder = StopWatchRecorder()
   meta_obj = {
     'download-started': datetime.now().isoformat(),
-    'filter': filter_str
+    'filter': filter_str,
+    'url': items.url
   }
   get_logger().info('creating %s', output_file)
   stop_watch_recorder.start('retrieving data')
