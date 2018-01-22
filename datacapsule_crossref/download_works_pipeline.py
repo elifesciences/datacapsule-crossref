@@ -21,6 +21,7 @@ from datacapsule_crossref.beam_utils.utils import (
 
 from datacapsule_crossref.download_works_utils import (
   get_published_year_counts,
+  get_works_endpoint_with_filter,
   group_year_counts_to_filters_by_target,
   save_items_from_endpoint_for_filter_to_zipfile
 )
@@ -42,6 +43,8 @@ def get_logger():
 
 def get_target_filter_map(works_endpoint, opt):
   if opt.group_by_published_date:
+    if opt.filter:
+      works_endpoint = get_works_endpoint_with_filter(works_endpoint, opt.filter)
     year_counts = get_published_year_counts(works_endpoint)
     return group_year_counts_to_filters_by_target(
       year_counts
@@ -73,6 +76,8 @@ def configure_pipeline(p, opt):
   works_endpoint = get_works_endpoint(opt)
   target_filter_map = get_target_filter_map(works_endpoint, opt)
   target_filter_pairs = sorted(target_filter_map.items())
+  get_logger().info('found %d pairs', len(target_filter_pairs))
+  get_logger().debug('target_filter_pairs: %s', target_filter_pairs)
   total_counter = Metrics.counter('App', MetricCounters.TOTAL)
   total_counter.inc(len(target_filter_pairs))
   _ = (

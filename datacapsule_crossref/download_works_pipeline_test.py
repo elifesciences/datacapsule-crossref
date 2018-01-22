@@ -15,7 +15,9 @@ from datacapsule_crossref.download_works_pipeline import (
   APPLICATION_URL
 )
 
-FILTER_1 = 'key1=value1'
+FILTER_KEY_1 = 'key1'
+FILTER_VALUE_1 = 'value1'
+FILTER_1 = '%s:%s' % (FILTER_KEY_1, FILTER_VALUE_1)
 FILTER_NAME_1 = 'filter1'
 EMAIL = 'email1@dev.null'
 
@@ -44,6 +46,27 @@ class TestTargetFilterMap(object):
         get_published_year_counts.assert_called_with(
           works_endpoint
         )
+
+  def test_should_add_filter_when_grouping_based_on_year_count(self):
+    works_endpoint = MagicMock(spec=Works)
+    opt = to_namedtuple(filter=FILTER_1, filter_name=None, group_by_published_date=True)
+    m = download_works_pipeline
+    with patch.object(m, 'group_year_counts_to_filters_by_target') as\
+      group_year_counts_to_filters_by_target:
+      with patch.object(m, 'get_published_year_counts') as get_published_year_counts:
+        assert (
+          get_target_filter_map(works_endpoint, opt) ==
+          group_year_counts_to_filters_by_target.return_value
+        )
+        group_year_counts_to_filters_by_target.assert_called_with(
+          get_published_year_counts.return_value
+        )
+        get_published_year_counts.assert_called_with(
+          works_endpoint.filter.return_value
+        )
+        works_endpoint.filter.assert_called_with(**{
+          FILTER_KEY_1: FILTER_VALUE_1
+        })
 
 class TestGetWorksEndpoint(object):
   def test_should_instantiate_works_without_etiquette(self):
