@@ -7,7 +7,7 @@ import re
 import json
 import zipfile
 from zipfile import ZipFile
-from urllib.parse import quote
+from urllib.parse import urlencode
 
 from requests_futures.sessions import FuturesSession
 from tqdm import tqdm
@@ -21,12 +21,19 @@ DEFLATE = "deflate"
 BZIP2 = "bzip2"
 LZMA = "lzma"
 
+DEFAULT_CROSSREF_API_URL = 'http://api.crossref.org/works'
+
 def get_logger():
   return logging.getLogger(__name__)
 
 def get_args_parser():
   parser = argparse.ArgumentParser(
     description='Download Crossref Works data'
+  )
+  parser.add_argument(
+    '--base-url', type=str,
+    default=DEFAULT_CROSSREF_API_URL,
+    help='base url to retrieve works from'
   )
   parser.add_argument(
     '--output-file', type=str, required=True,
@@ -61,6 +68,15 @@ def get_args_parser():
   )
   return parser
 
+def add_url_parameters(base_url, parameters):
+  if not parameters:
+    return base_url
+  if isinstance(parameters, (dict, list)):
+    parameters = urlencode(parameters)
+  return '{}{}{}'.format(
+    base_url, '&' if '?' in base_url else '?', parameters
+  )
+
 def iter_page_responses(base_url, max_retries, start_cursor='*'):
   logger = get_logger()
 
@@ -74,9 +90,7 @@ def iter_page_responses(base_url, max_retries, start_cursor='*'):
     )
 
     def request_page(cursor):
-      url = '{}{}cursor={}'.format(
-        base_url, '&' if '?' in base_url else '?', quote(cursor)
-      )
+      url = add_url_parameters(base_url, {'cursor': cursor})
       return session.get(url, stream=True)
 
     future_response = request_page(start_cursor)
@@ -178,12 +192,13 @@ def save_page_responses(base_url, zip_filename, max_retries, items_per_page, com
     if pbar:
       pbar.close()
 
-def download_works_direct(zip_filename, batch_size, max_retries, compression, email=None):
-  url = 'http://api.crossref.org/works?rows={}'.format(
-    batch_size
-  )
+def download_works_direct(base_url, zip_filename, batch_size, max_retries, compression, email=None):
+  parameters = [
+    ('rows', batch_size)
+  ]
   if email:
-    url += '&mailto=' + quote(email)
+    parameters.append(('mailto', email))
+  url = add_url_parameters(base_url, parameters)
   save_page_responses(
     url,
     zip_filename=zip_filename,
@@ -208,6 +223,7 @@ def download_direct(argv):
     compression = zipfile.ZIP_LZMA
 
   download_works_direct(
+    args.base_url,
     output_file,
     batch_size=args.batch_size,
     max_retries=args.max_retries,
