@@ -1,4 +1,4 @@
-from collections import deque
+from collections import deque, namedtuple
 from heapq import heappush, heappop, heappushpop
 import itertools
 
@@ -93,3 +93,26 @@ def peek(iterable):
   except StopIteration:
     return None
   return first, itertools.chain([first], iterable)
+
+def extend_dict(d, *other_dicts, **kwargs):
+  """
+  example:
+
+  extend_dict(d1, d2)
+
+  is equivalent to Python 3 syntax:
+  {
+    **d1,
+    **d2
+  }
+  """
+  d = d.copy()
+  for other_dict in other_dicts:
+    d.update(other_dict)
+  d.update(kwargs)
+  return d
+
+def to_namedtuple(*args, **kwargs):
+  name = kwargs.pop('name', 'Tuple')
+  d = extend_dict(*list(args) + [kwargs])
+  return namedtuple(name, d.keys())(**d)

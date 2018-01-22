@@ -8,7 +8,7 @@ import json
 import zipfile
 from zipfile import ZipFile
 
-from six.moves.urllib.parse import urlencode
+from six.moves.urllib.parse import urlencode # pylint: disable=E0401
 
 from requests_futures.sessions import FuturesSession
 from tqdm import tqdm
