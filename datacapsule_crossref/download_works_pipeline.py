@@ -2,6 +2,7 @@ from __future__ import absolute_import
 
 import argparse
 import logging
+import zipfile
 
 import apache_beam as beam
 from apache_beam.io.filesystems import FileSystems
@@ -62,18 +63,25 @@ def get_works_endpoint(opt):
   return Works()
 
 class RetrieveAndSaveWorks(object):
-  def __init__(self, works_endpoint, output_path):
+  def __init__(self, works_endpoint, output_path, compression):
     self.works_endpoint = works_endpoint
     self.output_path = output_path
+    self.compression = compression
 
   def __call__(self, target_filter_pair):
     filter_name, filter_str = target_filter_pair
     output_file = FileSystems.join(self.output_path, filter_name + '.zip')
     save_items_from_endpoint_for_filter_to_zipfile(
-      self.works_endpoint, filter_str, output_file
+      self.works_endpoint, filter_str, output_file, self.compression
     )
 
 def configure_pipeline(p, opt):
+  compression = zipfile.ZIP_DEFLATED
+  if opt.compression == BZIP2:
+    compression = zipfile.ZIP_BZIP2
+  elif opt.compression == LZMA:
+    compression = zipfile.ZIP_LZMA
+
   works_endpoint = get_works_endpoint(opt)
   target_filter_map = get_target_filter_map(works_endpoint, opt)
   target_filter_pairs = sorted(target_filter_map.items())
@@ -86,7 +94,7 @@ def configure_pipeline(p, opt):
     beam.Create(target_filter_pairs) |
     PreventFusion() |
     "RetrieveAndSaveWorks" >> MapOrLog(
-      RetrieveAndSaveWorks(works_endpoint, opt.output_path),
+      RetrieveAndSaveWorks(works_endpoint, opt.output_path, compression),
       error_count=MetricCounters.ERROR
     )
   )

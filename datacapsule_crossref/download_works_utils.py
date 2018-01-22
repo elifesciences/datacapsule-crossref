@@ -129,7 +129,9 @@ def is_already_download(filter_str, output_file, meta_filename):
       return True
   return False
 
-def save_items_from_endpoint_for_filter_to_zipfile(works_endpoint, filter_str, output_file):
+def save_items_from_endpoint_for_filter_to_zipfile(
+  works_endpoint, filter_str, output_file, compression):
+
   items = get_works_endpoint_with_filter(works_endpoint, filter_str)
   mkdirs_exists_ok(dirname(output_file))
   meta_filename = output_file + '.meta'
@@ -144,7 +146,7 @@ def save_items_from_endpoint_for_filter_to_zipfile(works_endpoint, filter_str, o
   get_logger().info('creating %s', output_file)
   stop_watch_recorder.start('retrieving data')
   with FileSystems.create(output_file) as output_f:
-    with ZipFile(output_f, 'w', allowZip64=True) as zf:
+    with ZipFile(output_f, 'w', compression=compression, allowZip64=True) as zf:
       count = save_items_to_zipfile(items, zf, info=output_file)
   meta_obj['download-finished'] = datetime.now().isoformat()
   meta_obj['count'] = count

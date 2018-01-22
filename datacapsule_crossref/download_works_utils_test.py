@@ -1,4 +1,5 @@
 from datetime import date
+from zipfile import ZIP_DEFLATED
 from mock import patch, MagicMock
 
 from crossref.restful import Works
@@ -156,14 +157,15 @@ class TestSaveItemsFromEndpointForFilterToZipfile(object):
               is_already_download_mock.return_value = False
               save_items_to_zipfile_mock.return_value = 123
               save_items_from_endpoint_for_filter_to_zipfile(
-                works_endpoint, FILTER_STR_1, OUTPUT_FILE_1
+                works_endpoint, FILTER_STR_1, OUTPUT_FILE_1, ZIP_DEFLATED
               )
               get_works_endpoint_with_filter_mock.assert_called_with(
                 works_endpoint, FILTER_STR_1
               )
               FileSystems.create.assert_any_call(OUTPUT_FILE_1)
               ZipFile.assert_called_with(
-                FileSystems.create.return_value.__enter__(), 'w', allowZip64=True
+                FileSystems.create.return_value.__enter__(), 'w',
+                compression=ZIP_DEFLATED, allowZip64=True
               )
               save_items_to_zipfile_mock.assert_called_with(
                 get_works_endpoint_with_filter_mock.return_value,
@@ -181,6 +183,6 @@ class TestSaveItemsFromEndpointForFilterToZipfile(object):
             with patch.object(m, 'ZipFile'):
               is_already_download_mock.return_value = True
               save_items_from_endpoint_for_filter_to_zipfile(
-                works_endpoint, FILTER_STR_1, OUTPUT_FILE_1
+                works_endpoint, FILTER_STR_1, OUTPUT_FILE_1, ZIP_DEFLATED
               )
               save_items_to_zipfile_mock.assert_not_called()
