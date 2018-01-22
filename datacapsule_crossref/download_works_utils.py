@@ -130,8 +130,9 @@ def save_items_from_endpoint_for_filter_to_zipfile(works_endpoint, filter_str, o
   }
   get_logger().info('creating %s', output_file)
   with FileSystems.create(output_file) as output_f:
-    with ZipFile(output_f, 'w') as zf:
+    with ZipFile(output_f, 'w', allowZip64=True) as zf:
       count = save_items_to_zipfile(items, zf)
   meta_obj['download-finished'] = datetime.now().isoformat()
   meta_obj['count'] = count
+  get_logger().info('finished processing, saving meta to %s', meta_filename)
   save_meta(meta_filename, meta_obj)

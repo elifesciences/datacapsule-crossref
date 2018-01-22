@@ -162,7 +162,9 @@ class TestSaveItemsFromEndpointForFilterToZipfile(object):
                 works_endpoint, FILTER_STR_1
               )
               FileSystems.create.assert_any_call(OUTPUT_FILE_1)
-              ZipFile.assert_called_with(FileSystems.create.return_value.__enter__(), 'w')
+              ZipFile.assert_called_with(
+                FileSystems.create.return_value.__enter__(), 'w', allowZip64=True
+              )
               save_items_to_zipfile_mock.assert_called_with(
                 get_works_endpoint_with_filter_mock.return_value,
                 ZipFile.return_value.__enter__()
