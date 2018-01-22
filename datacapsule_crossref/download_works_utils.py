@@ -1,4 +1,6 @@
 import json
+import logging
+from datetime import datetime
 from zipfile import ZipFile
 
 from apache_beam.io.filesystems import FileSystems
@@ -11,6 +13,9 @@ PRE_1800_KEY = PRE_X_KEY
 MONTHLY_THRESHOLD = 1950
 
 CURRENT_KEY = 'current'
+
+def get_logger():
+  return logging.getLogger(__name__)
 
 def get_published_year_counts(works_endpoint):
   return works_endpoint.facet('published')['published']['values']
@@ -54,8 +59,11 @@ def save_item_to_zipfile(item, zf):
   zf.writestr(filename, data)
 
 def save_items_to_zipfile(items, zf):
+  count = 0
   for item in items:
     save_item_to_zipfile(item, zf)
+    count += 1
+  return count
 
 def parse_filter_to_dict(filter_str):
   if not filter_str:
@@ -81,9 +89,49 @@ def mkdirs_exists_ok(path):
   except IOError:
     pass
 
+def delete_ignore_errors(path):
+  try:
+    FileSystems.delete([path])
+  except IOError:
+    pass
+
+def load_meta_or_none(meta_filename):
+  try:
+    with FileSystems.open(meta_filename) as meta_f:
+      meta_obj = json.loads(meta_f.read())
+      return meta_obj
+  except IOError:
+    pass
+
+def save_meta(meta_filename, meta_obj):
+  with FileSystems.create(meta_filename) as meta_f:
+    meta_f.write(json.dumps(meta_obj))
+
+def is_already_download(filter_str, output_file, meta_filename):
+  if not FileSystems.exists(output_file):
+    return False
+  meta_obj = load_meta_or_none(meta_filename)
+  if meta_obj:
+    get_logger().info('existing meta: %s', meta_obj)
+    if meta_obj['filter'] == filter_str:
+      return True
+  return False
+
 def save_items_from_endpoint_for_filter_to_zipfile(works_endpoint, filter_str, output_file):
   items = get_works_endpoint_with_filter(works_endpoint, filter_str)
   mkdirs_exists_ok(dirname(output_file))
+  meta_filename = output_file + '.meta'
+  if is_already_download(filter_str, output_file, meta_filename):
+    get_logger().info('already downloaded: %s (%s)', meta_filename, filter_str)
+    return
+  meta_obj = {
+    'download-started': datetime.now().isoformat(),
+    'filter': filter_str
+  }
+  get_logger().info('creating %s', output_file)
   with FileSystems.create(output_file) as output_f:
     with ZipFile(output_f, 'w') as zf:
-      save_items_to_zipfile(items, zf)
+      count = save_items_to_zipfile(items, zf)
+  meta_obj['download-finished'] = datetime.now().isoformat()
+  meta_obj['count'] = count
+  save_meta(meta_filename, meta_obj)

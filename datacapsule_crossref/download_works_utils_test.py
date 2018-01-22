@@ -9,6 +9,7 @@ from datacapsule_crossref.download_works_utils import (
   group_year_counts_to_filters_by_target,
   parse_filter_to_dict,
   get_works_endpoint_with_filter,
+  is_already_download,
   save_items_from_endpoint_for_filter_to_zipfile,
   PRE_1800_KEY,
   CURRENT_KEY
@@ -104,23 +105,79 @@ class TestGetWorksEndpointWithFilter(object):
     )
     works_endpoint.filter.assert_called_with(filter1='value1')
 
+class TestIsAlreadyDownload(object):
+  def test_should_return_false_if_output_file_does_not_exist(self):
+    m = download_works_utils
+    with patch.object(m, 'load_meta_or_none') as load_meta_or_none_mock:
+      with patch.object(m, 'FileSystems') as FileSystems:
+        load_meta_or_none_mock.return_value = {
+          'filter': FILTER_STR_1
+        }
+        FileSystems.exists.return_value = False
+        assert not is_already_download(FILTER_STR_1, OUTPUT_FILE_1, OUTPUT_FILE_1 + '.meta')
+
+  def test_should_return_false_if_meta_filter_does_not_match(self):
+    m = download_works_utils
+    with patch.object(m, 'load_meta_or_none') as load_meta_or_none_mock:
+      with patch.object(m, 'FileSystems') as FileSystems:
+        load_meta_or_none_mock.return_value = {
+          'filter': 'other filter'
+        }
+        FileSystems.exists.return_value = True
+        assert not is_already_download(FILTER_STR_1, OUTPUT_FILE_1, OUTPUT_FILE_1 + '.meta')
+
+  def test_should_return_false_if_meta_file_does_not_exist(self):
+    m = download_works_utils
+    with patch.object(m, 'load_meta_or_none') as load_meta_or_none_mock:
+      with patch.object(m, 'FileSystems') as FileSystems:
+        load_meta_or_none_mock.return_value = None
+        FileSystems.exists.return_value = True
+        assert not is_already_download(FILTER_STR_1, OUTPUT_FILE_1, OUTPUT_FILE_1 + '.meta')
+
+  def test_should_return_true_if_output_file_and_meta_file_matches(self):
+    m = download_works_utils
+    with patch.object(m, 'load_meta_or_none') as load_meta_or_none_mock:
+      with patch.object(m, 'FileSystems') as FileSystems:
+        load_meta_or_none_mock.return_value = {
+          'filter': FILTER_STR_1
+        }
+        FileSystems.exists.return_value = True
+        assert is_already_download(FILTER_STR_1, OUTPUT_FILE_1, OUTPUT_FILE_1 + '.meta')
+
 class TestSaveItemsFromEndpointForFilterToZipfile(object):
   def test_should_pass_around_args(self):
     works_endpoint = MagicMock(spec=Works)
     m = download_works_utils
     with patch.object(m, 'get_works_endpoint_with_filter') as get_works_endpoint_with_filter_mock:
       with patch.object(m, 'save_items_to_zipfile') as save_items_to_zipfile_mock:
-        with patch.object(m, 'FileSystems') as FileSystems:
-          with patch.object(m, 'ZipFile') as ZipFile:
-            save_items_from_endpoint_for_filter_to_zipfile(
-              works_endpoint, FILTER_STR_1, OUTPUT_FILE_1
-            )
-            get_works_endpoint_with_filter_mock.assert_called_with(
-              works_endpoint, FILTER_STR_1
-            )
-            FileSystems.create.assert_called_with(OUTPUT_FILE_1)
-            ZipFile.assert_called_with(FileSystems.create.return_value.__enter__(), 'w')
-            save_items_to_zipfile_mock.assert_called_with(
-              get_works_endpoint_with_filter_mock.return_value,
-              ZipFile.return_value.__enter__()
-            )
+        with patch.object(m, 'is_already_download') as is_already_download_mock:
+          with patch.object(m, 'FileSystems') as FileSystems:
+            with patch.object(m, 'ZipFile') as ZipFile:
+              is_already_download_mock.return_value = False
+              save_items_to_zipfile_mock.return_value = 123
+              save_items_from_endpoint_for_filter_to_zipfile(
+                works_endpoint, FILTER_STR_1, OUTPUT_FILE_1
+              )
+              get_works_endpoint_with_filter_mock.assert_called_with(
+                works_endpoint, FILTER_STR_1
+              )
+              FileSystems.create.assert_any_call(OUTPUT_FILE_1)
+              ZipFile.assert_called_with(FileSystems.create.return_value.__enter__(), 'w')
+              save_items_to_zipfile_mock.assert_called_with(
+                get_works_endpoint_with_filter_mock.return_value,
+                ZipFile.return_value.__enter__()
+              )
+
+  def test_should_skip_if_file_already_downloaded(self):
+    works_endpoint = MagicMock(spec=Works)
+    m = download_works_utils
+    with patch.object(m, 'get_works_endpoint_with_filter'):
+      with patch.object(m, 'save_items_to_zipfile') as save_items_to_zipfile_mock:
+        with patch.object(m, 'is_already_download') as is_already_download_mock:
+          with patch.object(m, 'FileSystems'):
+            with patch.object(m, 'ZipFile'):
+              is_already_download_mock.return_value = True
+              save_items_from_endpoint_for_filter_to_zipfile(
+                works_endpoint, FILTER_STR_1, OUTPUT_FILE_1
+              )
+              save_items_to_zipfile_mock.assert_not_called()
