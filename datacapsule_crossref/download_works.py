@@ -7,7 +7,8 @@ import re
 import json
 import zipfile
 from zipfile import ZipFile
-from urllib.parse import urlencode
+
+from six.moves.urllib.parse import urlencode
 
 from requests_futures.sessions import FuturesSession
 from tqdm import tqdm
