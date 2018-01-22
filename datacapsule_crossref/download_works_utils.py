@@ -5,6 +5,10 @@ from zipfile import ZipFile
 
 from apache_beam.io.filesystems import FileSystems
 
+from datacapsule_crossref.stopwatch import (
+  StopWatchRecorder
+)
+
 PRE_X_THRESHOLD = 1800
 PRE_X_KEY = 'pre-%d' % PRE_X_THRESHOLD
 PRE_X_FILTER = 'until-pub-date:%d' % (PRE_X_THRESHOLD - 1)
@@ -124,15 +128,22 @@ def save_items_from_endpoint_for_filter_to_zipfile(works_endpoint, filter_str, o
   if is_already_download(filter_str, output_file, meta_filename):
     get_logger().info('already downloaded: %s (%s)', meta_filename, filter_str)
     return
+  stop_watch_recorder = StopWatchRecorder()
   meta_obj = {
     'download-started': datetime.now().isoformat(),
     'filter': filter_str
   }
   get_logger().info('creating %s', output_file)
+  stop_watch_recorder.start('retrieving data')
   with FileSystems.create(output_file) as output_f:
     with ZipFile(output_f, 'w', allowZip64=True) as zf:
       count = save_items_to_zipfile(items, zf)
   meta_obj['download-finished'] = datetime.now().isoformat()
   meta_obj['count'] = count
-  get_logger().info('finished processing, saving meta to %s', meta_filename)
+  stop_watch_recorder.stop()
+  get_logger().info(
+    'finished processing %d items, saving meta to %s (%s)',
+    count, meta_filename,
+    stop_watch_recorder
+  )
   save_meta(meta_filename, meta_obj)
