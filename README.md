@@ -1,14 +1,16 @@
+# DataCapsule Crossref
+
 Retrieve and extract citations from Crossref data.
 
-# Pre-requsites
+## Pre-requsites
 
 * Python 2 or 3 (Python 3 preferred)
 
-# Setup
+## Setup
 
 `pip install -r requirements.txt`
 
-# Data Retrieval
+## Data Retrieval
 
 Data is retrieved via the [Crossref's Works API](https://api.crossref.org/works) ([doc](https://github.com/CrossRef/rest-api-doc)).
 
@@ -22,7 +24,7 @@ To start or resume the download run:
 
 The file _data/crossref-works.zip_ as well as _data/crossref-works.zip.meta_ will be created and updated. _crossref-works.zip_ will contain files with the raw response.
 
-# Extract Citations
+## Extract Citations
 
 Run:
 
@@ -35,7 +37,7 @@ That will create _data/crossref-works-citations.tsv.gz_ a compressed tsv file wi
 * _citing_doi_
 * _cited_doi_
 
-# Create Summary Stats
+## Create Summary Stats
 
 Run:
 
@@ -52,6 +54,7 @@ Run:
 ```
 
 That will create the following files with summary stats:
+
 * _data/crossref-works-summaries-stat.tsv_
 * _data/crossref-works-summaries-by-type-and-publisher-stat.tsv.gz_
 * _data/crossref-works-reference-stat.tsv.gz_
