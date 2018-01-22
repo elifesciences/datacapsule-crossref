@@ -18,7 +18,7 @@ def get_logger():
   return logging.getLogger(__name__)
 
 def get_published_year_counts(works_endpoint):
-  return works_endpoint.facet('published')['published']['values']
+  return works_endpoint.facet('published', '*')['published']['values']
 
 def add_monthly_filter(filters_by_target, year, month):
   year_month = '%d-%02d' % (year, month)

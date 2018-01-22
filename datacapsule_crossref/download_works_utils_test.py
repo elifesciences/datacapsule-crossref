@@ -21,8 +21,8 @@ OUTPUT_FILE_1 = 'output_file.zip'
 class TestGetPublishedYearsCounts(object):
   def test_should_call_endpoint_facet(self):
     endpoint = MagicMock(spec=Works)
-    assert get_published_year_counts(endpoint) == endpoint.facet('published')['published']['values']
-    endpoint.facet.assert_called_with('published')
+    assert get_published_year_counts(endpoint) == endpoint.facet.return_value['published']['values']
+    endpoint.facet.assert_called_with('published', '*')
 
 class TestGroupYearCountsToFiltersByTarget(object):
   def test_should_return_empty_dict_for_empty_year_counts(self):
