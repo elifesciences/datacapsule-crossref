@@ -11,8 +11,15 @@ from queue import Queue
 
 from tqdm import tqdm
 
-from datacapsule_crossref.utils import (
-  makedirs,
+from datacapsule_crossref.utils.collection import (
+  extend_dict
+)
+
+from datacapsule_crossref.utils.io import (
+  makedirs
+)
+
+from datacapsule_crossref.utils.csv import (
   write_csv,
   iter_dict_to_list
 )
@@ -137,10 +144,9 @@ def extract_citations_to_queue(input_queue, output_queue, clean_doi_enabled):
   for name, item in iter(input_queue.get, None):
     response = json.loads(item.decode('utf-8'))
     output_queue.put([
-      {
-        **extracted,
+      extend_dict(extracted, {
         Columns.PROVENANCE: name
-      }
+      })
       for extracted in extract_citations_from_response(response, clean_doi_enabled)
     ])
   output_queue.put(None)
@@ -207,7 +213,7 @@ def extract_citations_from_works_direct(argv):
   args = get_args_parser().parse_args(argv)
 
   output_file = args.output_file
-  makedirs(os.path.basename(output_file), exist_ok=True)
+  makedirs(os.path.basename(output_file), exists_ok=True)
 
   get_logger().info('output_file: %s', output_file)
 

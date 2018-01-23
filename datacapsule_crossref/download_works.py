@@ -13,8 +13,11 @@ from six.moves.urllib.parse import urlencode # pylint: disable=E0401
 from requests_futures.sessions import FuturesSession
 from tqdm import tqdm
 
-from datacapsule_crossref.utils import (
-  makedirs,
+from datacapsule_crossref.utils.io import (
+  makedirs
+)
+
+from datacapsule_crossref.utils.requests import (
   configure_session_retry
 )
 

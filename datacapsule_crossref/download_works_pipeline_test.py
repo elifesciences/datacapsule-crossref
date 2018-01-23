@@ -2,7 +2,7 @@ from mock import patch, MagicMock
 
 from crossref.restful import Works
 
-from datacapsule_crossref.collection_utils import (
+from datacapsule_crossref.utils.collection import (
   to_namedtuple
 )
 

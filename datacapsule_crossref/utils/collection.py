@@ -4,6 +4,10 @@ import itertools
 
 from future.utils import raise_from
 
+flatten = lambda l: [item for sublist in l for item in sublist]
+
+iter_flatten = lambda l: (item for sublist in l for item in sublist)
+
 class SimpleCounter(object):
   def __init__(self):
     self.data = {}

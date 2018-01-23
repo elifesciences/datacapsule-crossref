@@ -13,12 +13,19 @@ from tqdm import tqdm
 from six import string_types
 from future.utils import raise_from
 
-from datacapsule_crossref.utils import (
-  makedirs,
+from datacapsule_crossref.utils.collection import (
+  extend_dict
+)
+
+from datacapsule_crossref.utils.csv import (
   write_csv
 )
 
-from datacapsule_crossref.collection_utils import (
+from datacapsule_crossref.utils.io import (
+  makedirs
+)
+
+from datacapsule_crossref.utils.collection import (
   iter_sort_window
 )
 
@@ -194,10 +201,9 @@ def extract_summaries_to_queue(input_queue, output_queue, clean_doi_enabled):
     try:
       response = json.loads(item.decode('utf-8'))
       output_queue.put([
-        {
-          **summary,
+        extend_dict(summary, {
           Columns.PROVENANCE: name
-        }
+        })
         for summary in extract_summaries_from_response(response, clean_doi_enabled)
       ])
     except Exception as e:
@@ -255,7 +261,7 @@ def extract_summaries_from_works_direct(argv):
   args = get_args_parser().parse_args(argv)
 
   output_file = args.output_file
-  makedirs(os.path.basename(output_file), exist_ok=True)
+  makedirs(os.path.basename(output_file), exists_ok=True)
 
   get_logger().info('output_file: %s', output_file)
   get_logger().info('delimiter: %s (%s)', args.delimiter, len(args.delimiter))
