@@ -29,6 +29,13 @@ def MapOrLog(fn, log_fn=None, error_count=None):
       log_fn(e, x)
   return beam.FlatMap(wrapper)
 
+def Count(name, counter_value_fn):
+  counter = Metrics.counter('Count', name)
+  def wrapper(x):
+    counter.inc(counter_value_fn(x) if counter_value_fn else 1)
+    return x
+  return name >> beam.Map(wrapper)
+
 class GroupTransforms(beam.PTransform):
   """
   Convenience method to allow a PTransform for grouping purpose
@@ -41,6 +48,13 @@ class GroupTransforms(beam.PTransform):
 
   def expand(self, pcoll): # pylint: disable=W0221
     return self.expand_fn(pcoll)
+
+def TransformAndCount(transform, counter_name, counter_value_fn=None):
+  return GroupTransforms(lambda pcoll: (
+    pcoll |
+    transform |
+    "Count" >> Count(counter_name, counter_value_fn)
+  ))
 
 def random_key():
   return getrandbits(32)

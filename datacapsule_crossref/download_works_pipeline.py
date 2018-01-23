@@ -6,7 +6,6 @@ import zipfile
 
 import apache_beam as beam
 from apache_beam.io.filesystems import FileSystems
-from apache_beam.metrics.metric import Metrics
 from apache_beam.options.pipeline_options import PipelineOptions, SetupOptions
 
 import crossref.restful
@@ -19,6 +18,7 @@ from datacapsule_crossref.beam_utils.main import (
 
 from datacapsule_crossref.beam_utils.utils import (
   MapOrLog,
+  TransformAndCount,
   PreventFusion
 )
 
@@ -39,6 +39,7 @@ APPLICATION_URL = 'https://github.com/elifesciences/datacapsule-crossref'
 
 class MetricCounters(object):
   TOTAL = 'total_count'
+  PROCESSED = 'processed_count'
   ERROR = 'error_count'
 
 def get_logger():
@@ -88,15 +89,19 @@ def configure_pipeline(p, opt):
   target_filter_pairs = sorted(target_filter_map.items())
   get_logger().info('found %d pairs', len(target_filter_pairs))
   get_logger().debug('target_filter_pairs: %s', target_filter_pairs)
-  total_counter = Metrics.counter('App', MetricCounters.TOTAL)
-  total_counter.inc(len(target_filter_pairs))
   _ = (
     p |
-    beam.Create(target_filter_pairs) |
+    "TargetFilterPairs" >> TransformAndCount(
+      beam.Create(target_filter_pairs),
+      MetricCounters.TOTAL
+    ) |
     PreventFusion() |
-    "RetrieveAndSaveWorks" >> MapOrLog(
-      RetrieveAndSaveWorks(works_endpoint, opt.output_path, compression),
-      error_count=MetricCounters.ERROR
+    "RetrieveAndSaveWorks" >> TransformAndCount(
+      MapOrLog(
+        RetrieveAndSaveWorks(works_endpoint, opt.output_path, compression),
+        error_count=MetricCounters.ERROR
+      ),
+      MetricCounters.PROCESSED
     )
   )
 
