@@ -20,6 +20,7 @@ from datacapsule_crossref.beam_utils.utils import (
   MapOrLog,
   FlatMapOrLog,
   TransformAndCount,
+  TransformAndLog,
   PreventFusion
 )
 
@@ -42,9 +43,18 @@ from datacapsule_crossref.extract_summaries_from_works import (
   SUMMARY_COLUMNS
 )
 
+from datacapsule_crossref.reference_stats import (
+  REFERENCE_STATS_COLUMNS
+)
+
+from datacapsule_crossref.extract_transforms import (
+  ReferenceStatsCombineFn
+)
+
 from datacapsule_crossref.extract_utils import (
   find_zip_filenames_with_meta_file,
-  read_works_from_zip
+  read_works_from_zip,
+  typed_counter_with_examples_to_dict
 )
 
 class MetricCounters(object):
@@ -112,13 +122,34 @@ def extract_citations_steps(works, opt, doi_filter):
     )
   )
 
+def extract_reference_stats(summaries, opt):
+  output_csv_prefix = FileSystems.join(opt.output_path, 'reference-stats')
+  get_logger().info('reference stats output_csv_prefix: %s', output_csv_prefix)
+
+  return (
+    summaries |
+    "CombineReferenceStats" >> TransformAndLog(
+      beam.CombineGlobally(
+        ReferenceStatsCombineFn()
+      ),
+      log_prefix='combined reference stats out: ',
+      log_level='info'
+    ) |
+    "ConvertReferenceStatsToDict" >> beam.FlatMap(typed_counter_with_examples_to_dict) |
+    "WriteReferenceStats" >> WriteDictCsv(
+      output_csv_prefix,
+      REFERENCE_STATS_COLUMNS,
+      file_name_suffix='.tsv.gz'
+    )
+  )
+
 def extract_summaries_steps(works, opt, doi_filter):
   summary_columns = get_summary_columns(opt)
 
   output_csv_prefix = FileSystems.join(opt.output_path, 'summaries')
   get_logger().info('summaries output_csv_prefix: %s', output_csv_prefix)
 
-  return (
+  summaries = (
     works |
     "ExtractSummary" >> TransformAndCount(
       MapOrLog(
@@ -129,7 +160,13 @@ def extract_summaries_steps(works, opt, doi_filter):
         error_count=MetricCounters.WORK_SUMMARIES_ERROR
       ),
       MetricCounters.WORK_SUMMARIES_PROCESSED
-    ) |
+    )
+  )
+
+  extract_reference_stats(summaries, opt)
+
+  return (
+    summaries |
     "WriteSummary" >> WriteDictCsv(
       output_csv_prefix,
       summary_columns,

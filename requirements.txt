@@ -1,3 +1,4 @@
+python-dateutil==2.6.1
 crossrefapi==1.2.0
 requests==2.18.3
 requests-futures==0.9.7
