@@ -180,11 +180,10 @@ class CsvStats(object):
   def get_stats(self):
     if self.stats_by_column_by_group:
       stats_by_group = dict()
-      get_logger().info('stats_by_column_by_group: %s', self.stats_by_column_by_group)
+      get_logger().debug('stats_by_column_by_group: %s', self.stats_by_column_by_group)
       for g, stats_by_column in iteritems(self.stats_by_column_by_group):
         stats = stats_by_group.setdefault(g, dict())
         for i, stats_of_column in enumerate(stats_by_column):
-          get_logger().info('stats_of_column: %s', stats_of_column)
           if 'sum' in stats_of_column and stats_of_column['count_numeric'] > 0:
             stats_of_column['mean'] = safe_mean(
               stats_of_column['sum'], stats_of_column['count_numeric']
@@ -219,7 +218,6 @@ def get_output_column_names(column_names, groupby_columns):
   )
 
 def flatten_stats(stats, column_names, groupby_columns):
-  get_logger().info('stats:\n%s\n, groupby_columns: %s', stats, groupby_columns)
   if not stats:
     return
   if groupby_columns:
