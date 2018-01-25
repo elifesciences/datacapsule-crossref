@@ -41,13 +41,21 @@ class TestCsvStats(object):
     csv_stats_1.add_dataframe(pd.DataFrame({
       'a': [1, 2, 10, 11]
     }))
-    non_merged_csv_stats = csv_stats_1.get_stats()
     csv_stats_2 = CsvStats()
     csv_stats_2.add_dataframe(pd.DataFrame({
       'a': [1, 2, 10, 11]
     }))
     csv_stats_1.add_stats(csv_stats_2)
     assert csv_stats_1.get_stats()['count'] == [8]
+
+  def test_should_count_using_dict_list(self):
+    csv_stats_1 = CsvStats()
+    csv_stats_1.add_dict_list([{
+      'a': 1
+    }, {
+      'a': 2
+    }], ['a'])
+    assert csv_stats_1.get_stats()['count'] == [2]
 
 class TestCalculateCountsFromDfBatches(object):
   def test_empty_df_should_produce_zero_counts(self):

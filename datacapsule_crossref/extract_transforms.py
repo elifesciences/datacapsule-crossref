@@ -110,8 +110,7 @@ class CsvStatsCombineFn(CombineFn):
       *args: Additional arguments and side inputs.
       **kwargs: Additional arguments and side inputs.
     """
-    df = dict_list_to_dataframe(elements, self.column_names)
-    accumulator.add_dataframe(df)
+    accumulator.add_dict_list(elements, self.column_names)
     return accumulator
 
   def merge_accumulators(self, accumulators, *args, **kwargs):

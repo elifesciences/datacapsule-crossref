@@ -68,8 +68,8 @@ def safe_mean(sum_value, count):
 def _get_column_stats_for_column(column, previous_type=None):
   stats = dict()
   try:
-    stats['count'] = stats.get('count', 0) + len(column)
-    stats['count_valid'] = stats.get('count_valid', 0) + len(column.dropna())
+    stats['count'] = len(column)
+    stats['count_valid'] = len(column.dropna())
     if previous_type != 'str':
       numeric_values = to_numeric_or_input(column).dropna()
       if len(numeric_values) > 0 and np.issubdtype(numeric_values.dtype, np.number):
@@ -89,6 +89,9 @@ def _get_column_stats_for_column(column, previous_type=None):
     return stats
   except Exception as e:
     raise_from(RuntimeError('failed to update stats for {}'.format(column)), e)
+
+def _get_column_stats_for_values(values, previous_type=None):
+  return _get_column_stats_for_column(pd.Series(values), previous_type)
 
 def _merge_column_stats(column_stats, other_column_stats):
   if not other_column_stats:
@@ -155,6 +158,23 @@ class CsvStats(object):
       self.stats_by_column_by_group[g] = [
         _get_and_merge_column_stats(stats_of_column, df[c])
         for stats_of_column, c in zip(stats_by_column, df.columns)
+      ]
+
+  def add_dict_list(self, dict_list, column_names):
+    for g, grouped_dict_list in zip([None], [dict_list]):
+      stats_by_column = self.stats_by_column_by_group.get(g)
+      if stats_by_column is None:
+        self.num_columns = len(column_names)
+        stats_by_column = [dict()] * self.num_columns
+      self.stats_by_column_by_group[g] = [
+        _merge_column_stats(
+          stats_of_column,
+          _get_column_stats_for_values(
+            [d.get(c) for d in grouped_dict_list],
+            stats_of_column.get('type')
+          )
+        )
+        for stats_of_column, c in zip(stats_by_column, column_names)
       ]
 
   def add_stats(self, other_csv_stats):
