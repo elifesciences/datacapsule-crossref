@@ -167,7 +167,7 @@ def parse_args(argv=None):
 
   process_cloud_args(
     args, args.output_path,
-    name='datacapsule-crossref'
+    name='datacapsule-crossref-download'
   )
 
   get_logger().info('args: %s', args)
