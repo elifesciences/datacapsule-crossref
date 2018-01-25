@@ -48,7 +48,7 @@ class TestCsvStats(object):
     csv_stats_1.add_stats(csv_stats_2)
     assert csv_stats_1.get_stats()['count'] == [8]
 
-  def test_should_count_using_dict_list(self):
+  def test_should_count_using_dict_list_without_groupby_columns(self):
     csv_stats_1 = CsvStats()
     csv_stats_1.add_dict_list([{
       'a': 1
@@ -56,6 +56,30 @@ class TestCsvStats(object):
       'a': 2
     }], ['a'])
     assert csv_stats_1.get_stats()['count'] == [2]
+
+  def test_should_count_using_dict_list_with_single_groupby_columns(self):
+    csv_stats_1 = CsvStats(groupby_columns=['g1'])
+    csv_stats_1.add_dict_list([{
+      'g1': 'g1_1',
+      'a': 1
+    }, {
+      'g1': 'g1_1',
+      'a': 2
+    }], ['a'])
+    assert csv_stats_1.get_stats()['g1_1']['count'] == [2]
+
+  def test_should_count_using_dict_list_with_multiple_groupby_columns(self):
+    csv_stats_1 = CsvStats(groupby_columns=['g1', 'g2'])
+    csv_stats_1.add_dict_list([{
+      'g1': 'g1_1',
+      'g2': 'g2_1',
+      'a': 1
+    }, {
+      'g1': 'g1_1',
+      'g2': 'g2_1',
+      'a': 2
+    }], ['a'])
+    assert csv_stats_1.get_stats()[('g1_1', 'g2_1')]['count'] == [2]
 
 class TestCalculateCountsFromDfBatches(object):
   def test_empty_df_should_produce_zero_counts(self):

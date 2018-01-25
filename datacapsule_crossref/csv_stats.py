@@ -6,6 +6,7 @@ import csv
 import sys
 import logging
 from signal import signal, SIGPIPE, SIG_DFL
+from itertools import groupby
 
 from six import iterkeys, iteritems
 from future.utils import raise_from
@@ -62,6 +63,14 @@ def split_and_drop_groupby_column(df, groupby_column):
     for x in gb.groups
   ]
 
+def groupby_dict_list_keys(dict_list, groupby_column):
+  groupby_key_fn = lambda d: tuple([d.get(c) for c in groupby_column])
+  return [
+    (x if len(x) > 1 else x[0], list(grouped_dict_list))
+    for x, grouped_dict_list in
+    groupby(sorted(dict_list, key=groupby_key_fn), key=groupby_key_fn)
+  ]
+
 def safe_mean(sum_value, count):
   return sum_value / count if count else 0
 
@@ -90,8 +99,32 @@ def _get_column_stats_for_column(column, previous_type=None):
   except Exception as e:
     raise_from(RuntimeError('failed to update stats for {}'.format(column)), e)
 
-def _get_column_stats_for_values(values, previous_type=None):
-  return _get_column_stats_for_column(pd.Series(values), previous_type)
+def _get_column_stats_for_values(values, previous_type=None, name=None):
+  stats = dict()
+  try:
+    stats['count'] = len(values)
+    stats['count_valid'] = sum(1 if x else 0 for x in values)
+    if previous_type != 'str':
+      numeric_values = [x for x in values if isinstance(x, (int, float))]
+      count_none = sum(1 if x is None else 0 for x in values)
+      count_values_non_numeric_not_none = len(values) - len(numeric_values) - count_none
+      count_numeric = len(numeric_values)
+      if count_numeric > 0 and count_values_non_numeric_not_none == 0:
+        stats['type'] = 'numeric'
+        stats['min'] = min(numeric_values)
+        stats['max'] = max(numeric_values)
+        stats['sum'] = sum(numeric_values)
+        stats['count_numeric'] = count_numeric
+        column_count_non_zero = sum(1 if x != 0 else 0 for x in numeric_values)
+        stats['count_non_zero'] = column_count_non_zero
+        stats['count_zero'] = count_numeric - column_count_non_zero
+      elif values:
+        stats['type'] = 'str'
+    else:
+      stats['type'] = previous_type
+    return stats
+  except Exception as e:
+    raise_from(RuntimeError('failed to update stats for %s (%s)' % (name, e)), e)
 
 def _merge_column_stats(column_stats, other_column_stats):
   if not other_column_stats:
@@ -161,7 +194,13 @@ class CsvStats(object):
       ]
 
   def add_dict_list(self, dict_list, column_names):
-    for g, grouped_dict_list in zip([None], [dict_list]):
+    if self.groupby_columns:
+      # for g in self.groupby_columns:
+      #   df_batch[g] = df_batch[g].fillna('')
+      dict_list_groups = groupby_dict_list_keys(dict_list, self.groupby_columns)
+    else:
+      dict_list_groups = [(None, dict_list)]
+    for g, grouped_dict_list in dict_list_groups:
       stats_by_column = self.stats_by_column_by_group.get(g)
       if stats_by_column is None:
         self.num_columns = len(column_names)
@@ -171,7 +210,8 @@ class CsvStats(object):
           stats_of_column,
           _get_column_stats_for_values(
             [d.get(c) for d in grouped_dict_list],
-            stats_of_column.get('type')
+            stats_of_column.get('type'),
+            name=c
           )
         )
         for stats_of_column, c in zip(stats_by_column, column_names)
