@@ -30,7 +30,7 @@ def add_monthly_filter(filters_by_target, year, month):
   month_filter = 'from-pub-date:%s,until-pub-date:%s' % (year_month, year_month)
   filters_by_target['%s/%02d' % (year, month)] = month_filter
 
-def group_year_counts_to_filters_by_target(year_counts, current_date=None):
+def group_year_counts_to_filters_by_target(year_counts, current_date=None, filter_str=None):
   filters_by_target = dict()
   pre_x_count = 0
   current_year = current_date.year if current_date else None
@@ -50,6 +50,9 @@ def group_year_counts_to_filters_by_target(year_counts, current_date=None):
         add_monthly_filter(filters_by_target, year, month)
   if pre_x_count:
     filters_by_target[PRE_X_KEY] = PRE_X_FILTER
+  if filter_str:
+    for k in filters_by_target.keys():
+      filters_by_target[k] = filters_by_target[k] + ',' + filter_str
   return filters_by_target
 
 def filename_for_doi(doi, ext='.json'):

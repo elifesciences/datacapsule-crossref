@@ -41,7 +41,7 @@ class TestTargetFilterMap(object):
           group_year_counts_to_filters_by_target.return_value
         )
         group_year_counts_to_filters_by_target.assert_called_with(
-          get_published_year_counts.return_value
+          get_published_year_counts.return_value, filter_str=opt.filter
         )
         get_published_year_counts.assert_called_with(
           works_endpoint
@@ -59,7 +59,7 @@ class TestTargetFilterMap(object):
           group_year_counts_to_filters_by_target.return_value
         )
         group_year_counts_to_filters_by_target.assert_called_with(
-          get_published_year_counts.return_value
+          get_published_year_counts.return_value, filter_str=opt.filter
         )
         get_published_year_counts.assert_called_with(
           works_endpoint.filter.return_value

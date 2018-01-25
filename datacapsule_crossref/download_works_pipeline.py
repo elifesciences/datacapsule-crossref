@@ -51,7 +51,7 @@ def get_target_filter_map(works_endpoint, opt):
       works_endpoint = get_works_endpoint_with_filter(works_endpoint, opt.filter)
     year_counts = get_published_year_counts(works_endpoint)
     return group_year_counts_to_filters_by_target(
-      year_counts
+      year_counts, filter_str=opt.filter
     )
   return {
     opt.filter_name: opt.filter

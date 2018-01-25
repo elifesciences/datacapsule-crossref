@@ -38,6 +38,14 @@ class TestGroupYearCountsToFiltersByTarget(object):
       PRE_1800_KEY: 'until-pub-date:1799'
     }
 
+  def test_should_include_passed_in_filter(self):
+    year_counts = {
+      "1700": 10
+    }
+    assert group_year_counts_to_filters_by_target(year_counts, filter_str=FILTER_STR_1) == {
+      PRE_1800_KEY: 'until-pub-date:1799,' + FILTER_STR_1
+    }
+
   def test_should_return_year_filter_for_1800(self):
     year_counts = {
       "1800": 10
