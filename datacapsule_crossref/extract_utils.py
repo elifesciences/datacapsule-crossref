@@ -1,6 +1,7 @@
 import logging
 import json
 import zipfile
+from io import BytesIO
 
 import dateutil
 
@@ -53,12 +54,13 @@ def find_zip_filenames_with_meta_file(data_path):
 
 def read_works_from_zip(zip_filename):
   with FileSystems.open(zip_filename) as zip_f:
-    with zipfile.ZipFile(zip_f, 'r') as zf:
-      filenames = zf.namelist()
-      for filename in filenames:
-        if filename.endswith('.json'):
-          with zf.open(filename) as json_f:
-            yield zip_filename + '#' + filename, json.loads(json_f.read())
+    data = zip_f.read()
+  with zipfile.ZipFile(BytesIO(data), 'r') as zf:
+    filenames = zf.namelist()
+    for filename in filenames:
+      if filename.endswith('.json'):
+        with zf.open(filename) as json_f:
+          yield zip_filename + '#' + filename, json.loads(json_f.read())
 
 def extract_year(created):
   return dateutil.parser.parse(created).year
