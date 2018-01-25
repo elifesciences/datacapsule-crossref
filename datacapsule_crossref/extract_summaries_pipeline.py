@@ -145,7 +145,9 @@ def extract_reference_stats(summaries, opt):
     "WriteReferenceStats" >> WriteDictCsv(
       output_csv_prefix,
       REFERENCE_STATS_COLUMNS,
-      file_name_suffix='.tsv.gz'
+      file_name_suffix='.tsv.gz',
+      num_shards=1,
+      shard_name_template=''
     )
   )
 
@@ -162,7 +164,6 @@ def CsvStatsForSummaries(opt, name, groupby_columns):
       beam.CombineGlobally(
         CsvStatsCombineFn(column_names, groupby_columns)
       ),
-      log_fn=lambda x: get_logger().info('csv stats output: %.500s', x),
       log_prefix='csv reference stats out: ',
       log_level='info'
     ) |
@@ -170,7 +171,9 @@ def CsvStatsForSummaries(opt, name, groupby_columns):
     "WriteCsvStats" >> WriteDictCsv(
       output_csv_prefix,
       csv_stats_columns,
-      file_name_suffix='.tsv.gz'
+      file_name_suffix='.tsv.gz',
+      num_shards=1,
+      shard_name_template=''
     )
   ))
 

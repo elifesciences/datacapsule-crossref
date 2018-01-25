@@ -44,12 +44,17 @@ def format_csv_rows(rows, delimiter=','):
   return result
 
 class WriteDictCsv(beam.PTransform):
-  def __init__(self, path, columns, file_name_suffix=None):
+  def __init__(
+    self, path, columns,
+    file_name_suffix=None, num_shards=0, shard_name_template=None):
+
     super(WriteDictCsv, self).__init__()
     self.path = path
     self.columns = columns
     self.file_name_suffix = file_name_suffix
     self.delimiter = csv_delimiter_by_filename(path + file_name_suffix)
+    self.num_shards = num_shards
+    self.shard_name_template = shard_name_template
 
   def expand(self, pcoll):
     return (
@@ -64,7 +69,10 @@ class WriteDictCsv(beam.PTransform):
       "Write" >> WriteToText(
         self.path,
         file_name_suffix=self.file_name_suffix,
-        header=format_csv_rows([self.columns], delimiter=self.delimiter).encode('utf-8')
+        header=format_csv_rows([self.columns],
+        delimiter=self.delimiter).encode('utf-8'),
+        num_shards=self.num_shards,
+        shard_name_template=self.shard_name_template
       )
     )
 
