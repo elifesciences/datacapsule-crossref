@@ -6,11 +6,48 @@ from six import iteritems
 import pandas as pd
 
 from datacapsule_crossref.csv_stats import (
-  calculate_counts_from_df_batches
+  CsvStats,
+  calculate_counts_from_df_batches,
+  get_output_column_names,
+  flatten_stats,
+  Columns
 )
 
 def setup_module():
   logging.basicConfig(level='DEBUG')
+
+class TestCsvStats(object):
+  def test_should_merge_empty_stats_with_non_empty_stats(self):
+    csv_stats_1 = CsvStats()
+    csv_stats_2 = CsvStats()
+    csv_stats_2.add_dataframe(pd.DataFrame({
+      'a': [1, 2, 10, 11]
+    }))
+    csv_stats_1.add_stats(csv_stats_2)
+    assert csv_stats_1.get_stats() == csv_stats_2.get_stats()
+
+  def test_should_merge_non_empty_stats_with_empty_stats(self):
+    csv_stats_1 = CsvStats()
+    csv_stats_1.add_dataframe(pd.DataFrame({
+      'a': [1, 2, 10, 11]
+    }))
+    non_merged_csv_stats = csv_stats_1.get_stats()
+    csv_stats_2 = CsvStats()
+    csv_stats_1.add_stats(csv_stats_2)
+    assert csv_stats_1.get_stats() == non_merged_csv_stats
+
+  def test_should_merge_non_empty_stats_with_non_empty_stats(self):
+    csv_stats_1 = CsvStats()
+    csv_stats_1.add_dataframe(pd.DataFrame({
+      'a': [1, 2, 10, 11]
+    }))
+    non_merged_csv_stats = csv_stats_1.get_stats()
+    csv_stats_2 = CsvStats()
+    csv_stats_2.add_dataframe(pd.DataFrame({
+      'a': [1, 2, 10, 11]
+    }))
+    csv_stats_1.add_stats(csv_stats_2)
+    assert csv_stats_1.get_stats()['count'] == [8]
 
 class TestCalculateCountsFromDfBatches(object):
   def test_empty_df_should_produce_zero_counts(self):
@@ -180,3 +217,51 @@ class TestCalculateCountsFromDfBatches(object):
       ('g1_x', 'g2_y'): [2],
       ('g1_y', ''): [1]
     }
+
+class TestGetOutputColumnNames(object):
+  def test_should_return_columns_without_groupby_columns(self):
+    assert get_output_column_names(['a', 'b'], None) == [Columns.STAT, 'a', 'b']
+
+  def test_should_return_columns_with_single_groupby_columns(self):
+    assert (
+      get_output_column_names(['a', 'b'], ['g1']) ==
+      ['g1', Columns.STAT, 'a', 'b']
+    )
+
+  def test_should_return_columns_with_multiple_groupby_columns(self):
+    assert (
+      get_output_column_names(['a', 'b'], ['g1', 'g2']) ==
+      ['g1', 'g2', Columns.STAT, 'a', 'b']
+    )
+
+class TestFlattenStats(object):
+  def test_should_flatten_stats_without_groupby_columns(self):
+    assert list(flatten_stats({
+      'count': [1]
+    }, ['a'], None)) == [{
+      Columns.STAT: 'count',
+      'a': 1
+    }]
+
+  def test_should_flatten_stats_with_single_groupby_columns(self):
+    assert list(flatten_stats({
+      'g1_x': {
+        'count': [1]
+      }
+    }, ['a'], ['g1'])) == [{
+      'g1': 'g1_x',
+      Columns.STAT: 'count',
+      'a': 1
+    }]
+
+  def test_should_flatten_stats_with_multiple_groupby_columns(self):
+    assert list(flatten_stats({
+      ('g1_x', 'g2_x'): {
+        'count': [1]
+      }
+    }, ['a'], ['g1', 'g2'])) == [{
+      'g1': 'g1_x',
+      'g2': 'g2_x',
+      Columns.STAT: 'count',
+      'a': 1
+    }]

@@ -21,7 +21,8 @@ from datacapsule_crossref.beam_utils.utils import (
   FlatMapOrLog,
   TransformAndCount,
   TransformAndLog,
-  PreventFusion
+  PreventFusion,
+  GroupTransforms
 )
 
 from datacapsule_crossref.utils.collection import (
@@ -47,8 +48,13 @@ from datacapsule_crossref.reference_stats import (
   REFERENCE_STATS_COLUMNS
 )
 
+from datacapsule_crossref.csv_stats import (
+  get_output_column_names as get_csv_stats_output_column_names
+)
+
 from datacapsule_crossref.extract_transforms import (
-  ReferenceStatsCombineFn
+  ReferenceStatsCombineFn,
+  CsvStatsCombineFn
 )
 
 from datacapsule_crossref.extract_utils import (
@@ -143,6 +149,31 @@ def extract_reference_stats(summaries, opt):
     )
   )
 
+def CsvStatsForSummaries(opt, name, groupby_columns):
+  output_csv_prefix = FileSystems.join(opt.output_path, name)
+  get_logger().info('csv stats output_csv_prefix: %s', output_csv_prefix)
+
+  column_names = SUMMARY_COLUMNS
+  csv_stats_columns = get_csv_stats_output_column_names(column_names, groupby_columns)
+
+  return GroupTransforms(lambda p: (
+    p |
+    "CombineReferenceStats" >> TransformAndLog(
+      beam.CombineGlobally(
+        CsvStatsCombineFn(column_names, groupby_columns)
+      ),
+      log_fn=lambda x: get_logger().info('csv stats output: %.500s', x),
+      log_prefix='csv reference stats out: ',
+      log_level='info'
+    ) |
+    "FlattenResults" >> beam.FlatMap(lambda x: x) |
+    "WriteCsvStats" >> WriteDictCsv(
+      output_csv_prefix,
+      csv_stats_columns,
+      file_name_suffix='.tsv.gz'
+    )
+  ))
+
 def extract_summaries_steps(works, opt, doi_filter):
   summary_columns = get_summary_columns(opt)
 
@@ -164,6 +195,19 @@ def extract_summaries_steps(works, opt, doi_filter):
   )
 
   extract_reference_stats(summaries, opt)
+
+  _ = (
+    summaries |
+    "GeneralStats" >> CsvStatsForSummaries(opt, 'general-stats', None)
+  )
+
+  _ = (
+    summaries |
+    "GeneralStatsByTypeAndPublisher" >> CsvStatsForSummaries(
+      opt, 'general-stats-by-type-and-publisher', [
+        SummaryColumns.TYPE, SummaryColumns.PUBLISHER
+    ])
+  )
 
   return (
     summaries |

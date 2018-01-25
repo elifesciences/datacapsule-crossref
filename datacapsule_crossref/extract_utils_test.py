@@ -11,7 +11,8 @@ from datacapsule_crossref.reference_stats import (
 )
 
 from datacapsule_crossref.extract_utils import (
-  update_reference_counters_for_summary
+  update_reference_counters_for_summary,
+  dict_list_to_dataframe
 )
 
 DOI_1 = 'doi_1'
@@ -67,3 +68,18 @@ class TestUpdateReferenceCountersForSummary(object):
       }
     ))
     assert {counter_type for counter_type, _, _, _ in result} == TOTAL_COUNTERS
+
+class TestDictListToDataframe(object):
+  def test_should_transform_single_value(self):
+    df = dict_list_to_dataframe([{'a': 'value1'}])
+    assert set(df.columns) == {'a'}
+    assert list(df['a'].values) == ['value1']
+
+  def test_should_transform_multiple_rows(self):
+    df = dict_list_to_dataframe([{'a': 'value1'}, {'a': 'value2'}])
+    assert set(df.columns) == {'a'}
+    assert list(df['a'].values) == ['value1', 'value2']
+
+  def test_should_transform_multiple_columns(self):
+    df = dict_list_to_dataframe([{'a': 'value1', 'b': 'value2'}])
+    assert set(df.columns) == {'a', 'b'}

@@ -2,9 +2,9 @@ import logging
 import json
 import zipfile
 
-from six import iteritems
-
 import dateutil
+
+import pandas as pd
 
 from apache_beam.io.filesystems import FileSystems
 
@@ -97,3 +97,6 @@ def typed_counter_with_examples_to_dict(typed_counter_with_examples):
       ReferenceStatsColumns.COUNT: count,
       ReferenceStatsColumns.EXAMPLES: examples
     }
+
+def dict_list_to_dataframe(dict_list, columns=None):
+  return pd.DataFrame.from_records(dict_list, columns=columns)
