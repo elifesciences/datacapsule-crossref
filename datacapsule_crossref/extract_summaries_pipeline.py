@@ -96,15 +96,15 @@ def get_summary_columns(opt):
     summary_columns += [SummaryColumns.DEBUG]
   return summary_columns
 
-def extract_citations_steps(works, opt, doi_filter):
+def CitationsForWorks(opt, doi_filter):
   empty_link = opt.citations_empty_link
   citations_columns = get_citations_columns(opt)
 
   output_csv_prefix = FileSystems.join(opt.output_path, 'citations')
   get_logger().info('citations output_csv_prefix: %s', output_csv_prefix)
 
-  return (
-    works |
+  return "CitationsForWorks" >> GroupTransforms(lambda p: (
+    p |
     "ExtractCitations" >> TransformAndCount(
       MapOrLog(
         lambda (zip_filename, work): extend_dict(
@@ -126,14 +126,14 @@ def extract_citations_steps(works, opt, doi_filter):
       citations_columns,
       file_name_suffix='.tsv.gz'
     )
-  )
+  ))
 
-def extract_reference_stats(summaries, opt):
+def ReferenceStatsForSummaries(opt):
   output_csv_prefix = FileSystems.join(opt.output_path, 'reference-stats')
   get_logger().info('reference stats output_csv_prefix: %s', output_csv_prefix)
 
-  return (
-    summaries |
+  return "ReferenceStatsForSummaries" >> GroupTransforms(lambda p: (
+    p |
     "CombineReferenceStats" >> TransformAndLog(
       beam.CombineGlobally(
         ReferenceStatsCombineFn()
@@ -149,7 +149,7 @@ def extract_reference_stats(summaries, opt):
       num_shards=1,
       shard_name_template=''
     )
-  )
+  ))
 
 def CsvStatsForSummaries(opt, name, groupby_columns):
   output_csv_prefix = FileSystems.join(opt.output_path, name)
@@ -160,7 +160,7 @@ def CsvStatsForSummaries(opt, name, groupby_columns):
 
   return GroupTransforms(lambda p: (
     p |
-    "CombineReferenceStats" >> TransformAndLog(
+    "CombineGeneralStats" >> TransformAndLog(
       beam.CombineGlobally(
         CsvStatsCombineFn(column_names, groupby_columns)
       ),
@@ -177,27 +177,71 @@ def CsvStatsForSummaries(opt, name, groupby_columns):
     )
   ))
 
-def extract_summaries_steps(works, opt, doi_filter):
+def ExtractSummaryFromWorks(doi_filter):
+  return "ExtractSummaryFromWorks" >> TransformAndCount(
+    MapOrLog(
+      lambda (zip_filename, work): extend_dict(
+        extract_summary_from_work(work, doi_filter),
+        {SummaryColumns.PROVENANCE: zip_filename}
+      ),
+      error_count=MetricCounters.WORK_SUMMARIES_ERROR
+    ),
+    MetricCounters.WORK_SUMMARIES_PROCESSED
+  )
+
+def WriteSummary(opt):
   summary_columns = get_summary_columns(opt)
 
   output_csv_prefix = FileSystems.join(opt.output_path, 'summaries')
   get_logger().info('summaries output_csv_prefix: %s', output_csv_prefix)
 
-  summaries = (
-    works |
-    "ExtractSummary" >> TransformAndCount(
-      MapOrLog(
-        lambda (zip_filename, work): extend_dict(
-          extract_summary_from_work(work, doi_filter),
-          {SummaryColumns.PROVENANCE: zip_filename}
-        ),
-        error_count=MetricCounters.WORK_SUMMARIES_ERROR
-      ),
-      MetricCounters.WORK_SUMMARIES_PROCESSED
-    )
+  return "WriteSummary" >> WriteDictCsv(
+    output_csv_prefix,
+    summary_columns,
+    file_name_suffix='.tsv.gz'
   )
 
-  extract_reference_stats(summaries, opt)
+def GetZipFiles(opt):
+  zip_filenames = find_zip_filenames_with_meta_file(opt.data_path)
+  get_logger().info('found %d zip files', len(zip_filenames))
+  get_logger().debug('zip files: %s', zip_filenames)
+  assert zip_filenames
+
+  return "GetZipFiles" >> TransformAndCount(
+    beam.Create(zip_filenames),
+    MetricCounters.ZIP_TOTAL
+  )
+
+def ReadWorksFromZip():
+  return "ReadWorksFromZip" >> FlatMapOrLog(
+    read_works_from_zip,
+    error_count=MetricCounters.ZIP_ERROR,
+    processed_count=MetricCounters.ZIP_PROCESSED,
+    output_count=MetricCounters.WORK_TOTAL
+  )
+
+def configure_pipeline(p, opt):
+  clean_doi_enabled = not opt.no_clean_dois
+  doi_filter = clean_doi if clean_doi_enabled else lambda x: x
+
+  works = (
+    p |
+    GetZipFiles(opt) |
+    PreventFusion() |
+    ReadWorksFromZip()
+  )
+
+  _ = (
+    works |
+    CitationsForWorks(opt, doi_filter)
+  )
+
+  summaries = works | ExtractSummaryFromWorks(doi_filter)
+
+  _ = (
+    summaries |
+    ReferenceStatsForSummaries(opt)
+  )
 
   _ = (
     summaries |
@@ -212,41 +256,10 @@ def extract_summaries_steps(works, opt, doi_filter):
     ])
   )
 
-  return (
+  _ = (
     summaries |
-    "WriteSummary" >> WriteDictCsv(
-      output_csv_prefix,
-      summary_columns,
-      file_name_suffix='.tsv.gz'
-    )
+    WriteSummary(opt)
   )
-
-def configure_pipeline(p, opt):
-  clean_doi_enabled = not opt.no_clean_dois
-  doi_filter = clean_doi if clean_doi_enabled else lambda x: x
-
-  zip_filenames = find_zip_filenames_with_meta_file(opt.data_path)
-  get_logger().info('found %d zip files', len(zip_filenames))
-  get_logger().debug('zip files: %s', zip_filenames)
-  assert zip_filenames
-
-  works = (
-    p |
-    "GetZipFiles" >> TransformAndCount(
-      beam.Create(zip_filenames),
-      MetricCounters.ZIP_TOTAL
-    ) |
-    PreventFusion() |
-    "ReadWorksFromZip" >> FlatMapOrLog(
-      read_works_from_zip,
-      error_count=MetricCounters.ZIP_ERROR,
-      processed_count=MetricCounters.ZIP_PROCESSED,
-      output_count=MetricCounters.WORK_TOTAL
-    )
-  )
-
-  extract_citations_steps(works, opt, doi_filter)
-  extract_summaries_steps(works, opt, doi_filter)
 
 def add_main_args(parser):
   source_group = parser.add_argument_group('source')
