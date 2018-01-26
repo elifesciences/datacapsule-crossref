@@ -10,7 +10,7 @@ SUMMARY_BY_PUBLISHER_STAT_FILE=$DATA_PATH/crossref-works-summaries-by-type-and-p
 REFERENCE_STAT_FILE=$DATA_PATH/crossref-works-reference-stat.tsv.gz
 
 echo "generate summary stats"
-pv "$SUMMARY_FILE" | zcat - | \
+pv -f "$SUMMARY_FILE" | zcat - | \
   tee >(python -m datacapsule_crossref.csv_stats --header --group-by=type,publisher | gzip > $SUMMARY_BY_PUBLISHER_STAT_FILE) | \
   tee >(python -m datacapsule_crossref.reference_stats | gzip > $REFERENCE_STAT_FILE) | \
   python -m datacapsule_crossref.csv_stats --header \
