@@ -5,6 +5,7 @@ Retrieve and extract citations from Crossref data.
 ## Pre-requsites
 
 * Python 2 or 3 (Python 3 preferred)
+* _pipeview_ (pv) to show progress in some shell scripts (ubuntu: `sudo apt-get install pv`)
 
 ## Setup
 
