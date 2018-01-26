@@ -79,7 +79,7 @@ def write_csv(filename, columns, iterable, delimiter=None):
   is_stdout = filename in {'stdout', '/dev/stdout'}
   temp_filename = (
     filename + TEMP_FILE_SUFFIX
-    if is_stdout
+    if not is_stdout
     else filename
   )
   if not is_stdout and os.path.isfile(filename):
