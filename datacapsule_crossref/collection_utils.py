@@ -41,7 +41,8 @@ def iter_sort_window(
   iterable, window_size, key=None, remove_duplicates=False, on_dropped_item=None):
 
   if window_size <= 1:
-    yield from iterable
+    for item in iterable:
+      yield item
     return
   if key:
     # we can't have equal keys, as the unwrapped may not be ordered
@@ -68,11 +69,13 @@ def iter_sort_window(
           'failed to pop item from heap, length: {} (key f={})'.format(len(heap), heap[:100])
         ), e)
   if remove_duplicates:
-    yield from iter_uniq_window(
+    for item in iter_uniq_window(
       iter_sort(), window_size, key=key, on_dropped_item=on_dropped_item
-    )
+    ):
+      yield item
   else:
-    yield from iter_sort()
+    for item in iter_sort():
+      yield item
 
 def iter_batch(coll, batch_size):
   batch = []

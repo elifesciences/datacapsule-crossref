@@ -76,10 +76,10 @@ def csv_delimiter_by_filename(filename):
 def write_csv(filename, columns, iterable, delimiter=None):
   if delimiter is None:
     delimiter = csv_delimiter_by_filename(filename)
-  is_stdout = filename not in {'stdout', '/dev/stdout'}
+  is_stdout = filename in {'stdout', '/dev/stdout'}
   temp_filename = (
     filename + TEMP_FILE_SUFFIX
-    if is_stdout
+    if not is_stdout
     else filename
   )
   if not is_stdout and os.path.isfile(filename):

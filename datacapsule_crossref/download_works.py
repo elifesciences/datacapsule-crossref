@@ -7,7 +7,8 @@ import re
 import json
 import zipfile
 from zipfile import ZipFile
-from urllib.parse import quote
+
+from six.moves.urllib.parse import urlencode
 
 from requests_futures.sessions import FuturesSession
 from tqdm import tqdm
@@ -21,12 +22,19 @@ DEFLATE = "deflate"
 BZIP2 = "bzip2"
 LZMA = "lzma"
 
+DEFAULT_CROSSREF_API_URL = 'http://api.crossref.org/works'
+
 def get_logger():
   return logging.getLogger(__name__)
 
 def get_args_parser():
   parser = argparse.ArgumentParser(
     description='Download Crossref Works data'
+  )
+  parser.add_argument(
+    '--base-url', type=str,
+    default=DEFAULT_CROSSREF_API_URL,
+    help='base url to retrieve works from'
   )
   parser.add_argument(
     '--output-file', type=str, required=True,
@@ -51,7 +59,24 @@ def get_args_parser():
     default=DEFLATE,
     help='Zip compression to use (requires Python 3.3+).'
   )
+  parser.add_argument(
+    '--email', type=str, required=False,
+    help='email to identify the requests as (see Crossref API etiquette)'
+  )
+  parser.add_argument(
+    '--debug', action='store_true',
+    help='Enable debug logging'
+  )
   return parser
+
+def add_url_parameters(base_url, parameters):
+  if not parameters:
+    return base_url
+  if isinstance(parameters, (dict, list)):
+    parameters = urlencode(parameters)
+  return '{}{}{}'.format(
+    base_url, '&' if '?' in base_url else '?', parameters
+  )
 
 def iter_page_responses(base_url, max_retries, start_cursor='*'):
   logger = get_logger()
@@ -61,19 +86,19 @@ def iter_page_responses(base_url, max_retries, start_cursor='*'):
   with FuturesSession(max_workers=10) as session:
     configure_session_retry(
       session=session,
-      max_retries=max_retries
+      max_retries=max_retries,
+      status_forcelist=[500, 502, 503, 504]
     )
 
     def request_page(cursor):
-      url = '{}{}cursor={}'.format(
-        base_url, '&' if '?' in base_url else '?', quote(cursor)
-      )
+      url = add_url_parameters(base_url, {'cursor': cursor})
       return session.get(url, stream=True)
 
     future_response = request_page(start_cursor)
     previous_cursor = start_cursor
     while future_response:
       response = future_response.result()
+      response.raise_for_status()
 
       # try to find the next cursor in the first response characters
       # we don't need to wait until the whole response has been received
@@ -93,6 +118,7 @@ def iter_page_responses(base_url, max_retries, start_cursor='*'):
         future_response = request_page(next_cursor)
         previous_cursor = next_cursor
       else:
+        logger.info('no next_cursor found, end reached?')
         future_response = None
 
       remaining_bytes = raw.read()
@@ -167,11 +193,15 @@ def save_page_responses(base_url, zip_filename, max_retries, items_per_page, com
     if pbar:
       pbar.close()
 
-def download_works_direct(zip_filename, batch_size, max_retries, compression):
+def download_works_direct(base_url, zip_filename, batch_size, max_retries, compression, email=None):
+  parameters = [
+    ('rows', batch_size)
+  ]
+  if email:
+    parameters.append(('mailto', email))
+  url = add_url_parameters(base_url, parameters)
   save_page_responses(
-    'http://api.crossref.org/works?rows={}'.format(
-      batch_size
-    ),
+    url,
     zip_filename=zip_filename,
     max_retries=max_retries,
     items_per_page=batch_size,
@@ -180,6 +210,9 @@ def download_works_direct(zip_filename, batch_size, max_retries, compression):
 
 def download_direct(argv):
   args = get_args_parser().parse_args(argv)
+
+  if args.debug:
+    logging.getLogger().setLevel('DEBUG')
 
   output_file = args.output_file
   makedirs(os.path.dirname(output_file), exist_ok=True)
@@ -191,10 +224,12 @@ def download_direct(argv):
     compression = zipfile.ZIP_LZMA
 
   download_works_direct(
+    args.base_url,
     output_file,
     batch_size=args.batch_size,
     max_retries=args.max_retries,
-    compression=compression
+    compression=compression,
+    email=args.email
   )
 
 def main(argv=None):
