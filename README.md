@@ -30,8 +30,10 @@ The file _data/crossref-works.zip_ as well as _data/crossref-works.zip.meta_ wil
 Run:
 
 ```bash
-./extract_citations_from_crossref_works.sh
+./extract_citations_from_crossref_works.sh [--multi-processing]
 ```
+
+Note the `--multi-processing` flag is optional and may make the processing faster.
 
 That will create _data/crossref-works-citations.tsv.gz_ a compressed tsv file with the following columns:
 
@@ -43,15 +45,17 @@ That will create _data/crossref-works-citations.tsv.gz_ a compressed tsv file wi
 Run:
 
 ```bash
-./extract_summaries_from_crossref_works.sh
+./extract_summaries_from_crossref_works.sh [--multi-processing] [--debug]
 ```
+
+Note the `--multi-processing` flag is optional and may make the processing faster. The `--debug` flag is currently required as it will add another _debug_ column containing more details about references.
 
 That will create _data/crossref-works-summaries.tsv.gz_ a compressed tsv file with a number of key features of works (used by the following step).
 
 Run:
 
 ```bash
-./citation_stats.sh
+./citations_stats.sh
 ```
 
 That will create the following files with summary stats:
