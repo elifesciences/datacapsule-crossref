@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Note: these stats are no longer used
+# Note: these stats are frequently updated and require to run process of cleaning the dois (separate branch)
 
 set -e
 
