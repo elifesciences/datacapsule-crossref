@@ -4,10 +4,13 @@ import argparse
 import csv
 import json
 import sys
+import logging
+from collections import defaultdict
 from signal import signal, SIGPIPE, SIG_DFL
 
-from six import iteritems, iterkeys
 import pandas as pd
+
+LOGGER = logging.getLogger(__name__)
 
 def get_args_parser():
   parser = argparse.ArgumentParser(
@@ -28,24 +31,22 @@ def get_args_parser():
   )
   return parser
 
-class CounterWithExamples():
+class CounterWithExamples(object):
   def __init__(self, limit=10):
-    self.count_map = dict()
-    self.example_map = dict()
+    self.count_map = defaultdict(lambda: 0)
+    self.example_map = defaultdict(list)
     self.limit = limit
 
   def add(self, key, example):
-    previous_count = self.count_map.get(key, 0)
+    previous_count = self.count_map[key]
     self.count_map[key] = previous_count + 1
     if previous_count < self.limit:
-      if not key in self.example_map:
-        self.example_map[key] = []
       self.example_map[key].append(example)
 
   def __iter__(self):
     return iter(sorted((
-        (key, count, self.example_map.get(key))
-        for key, count in iteritems(self.count_map)
+        (key, count, self.example_map[key])
+        for key, count in self.count_map.items()
       ),
       key=lambda x: x[1],
       reverse=True
@@ -53,18 +54,14 @@ class CounterWithExamples():
 
 class TypedCounterWithExample(object):
   def __init__(self, limit):
-    self.counters_map = {}
     self.limit = limit
+    self.counters_map = defaultdict(lambda: CounterWithExamples(self.limit))
 
   def add(self, counter_type, key, example):
-    counter_with_examples = self.counters_map.get(counter_type)
-    if counter_with_examples is None:
-      counter_with_examples = CounterWithExamples(self.limit)
-      self.counters_map[counter_type] = counter_with_examples
-    counter_with_examples.add(key, example)
+    self.counters_map[counter_type].add(key, example)
 
   def __iter__(self):
-    for counter_type in sorted(iterkeys(self.counters_map)):
+    for counter_type in sorted(self.counters_map.keys()):
       for key, count, examples in self.counters_map[counter_type]:
         yield counter_type, key, count, examples
 
@@ -102,7 +99,7 @@ def calculate_counts_from_rows(df_batches):
           typed_counter_with_examples.add(
             'key_combination',
             '|'.join(sorted([
-              k for k, v in iteritems(reference)
+              k for k, v in reference.items()
               if v is not None and v != ""
             ])),
             (doi, reference)
@@ -118,24 +115,47 @@ def calculate_counts_from_rows(df_batches):
 def calculate_and_output_counts(argv):
   args = get_args_parser().parse_args(argv)
 
+  csv.field_size_limit(min(2147483647, sys.maxsize))
+
   csv_writer = csv.writer(sys.stdout, delimiter=args.delimiter)
+
+  columns = pd.read_csv(
+    sys.stdin,
+    sep=args.delimiter,
+    nrows=1
+  ).columns
+
+  # only set the column types we need, otherwise use object
+  # (this will be faster and more reliable than inferring the column type)
+  column_dtype = dict(zip(columns, ['object'] * len(columns)))
+  column_dtype['reference_count'] = int
+  column_dtype['has_references'] = int
+  LOGGER.info('columns: %s', columns)
+  LOGGER.info('column_dtype: %s', column_dtype)
 
   df_batches = pd.read_csv(
     sys.stdin,
     sep=args.delimiter,
-    chunksize=args.batch_size
+    header=None,
+    names=columns,
+    chunksize=args.batch_size,
+    dtype=column_dtype
   )
 
   typed_counter_with_examples = calculate_counts_from_rows(df_batches)
-  csv_writer.writerow(['type', 'key', 'count', 'examples'])
 
+  csv_writer.writerow(['type', 'key', 'count', 'examples'])
   for counter_type, key, count, examples in typed_counter_with_examples:
     csv_writer.writerow([counter_type, key, count, json.dumps(examples)])
+
+def setup():
+  logging.basicConfig(level='INFO')
+  signal(SIGPIPE, SIG_DFL)
 
 def main(argv=None):
   calculate_and_output_counts(argv)
 
 if __name__ == "__main__":
-  signal(SIGPIPE, SIG_DFL)
+  setup()
 
   main()
