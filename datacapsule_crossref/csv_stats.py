@@ -147,6 +147,7 @@ def calculate_and_output_counts(argv):
   df_batches = pd.read_csv(
     sys.stdin,
     sep=args.delimiter,
+    quotechar='"',
     chunksize=args.batch_size,
     header='infer' if args.header else None
   )
