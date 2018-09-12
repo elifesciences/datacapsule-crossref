@@ -1,0 +1,16 @@
+FROM jupyter/minimal-notebook
+
+ENV PROJECT_HOME=/home/jovyan/datacapsule-crossref-jupyter
+
+WORKDIR ${PROJECT_HOME}
+
+COPY requirements.notebook.txt ${PROJECT_HOME}/
+RUN pip install --upgrade pip && \
+  pip install -r requirements.notebook.txt
+
+COPY docker/docker-entrypoint.sh /usr/local/bin/
+ENTRYPOINT ["/usr/local/bin/docker-entrypoint.sh"]
+
+WORKDIR ${PROJECT_HOME}/notebooks
+
+USER root
