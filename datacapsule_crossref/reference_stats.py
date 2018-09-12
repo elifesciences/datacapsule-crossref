@@ -11,6 +11,9 @@ from signal import signal, SIGPIPE, SIG_DFL
 import pandas as pd
 from future.utils import raise_from
 
+from .utils.pandas import read_csv_with_default_dtype
+
+
 LOGGER = logging.getLogger(__name__)
 
 class ProcessDataFrameError(RuntimeError):
@@ -126,7 +129,7 @@ def calculate_counts_from_rows(df_batches):
     LOGGER.info('processing batch: %s', df.shape)
     try:
       update_typed_counter_with_batch(typed_counter_with_examples, df)
-    except ValueError as e:
+    except Exception as e:
       raise_from(ProcessDataFrameError(df, "failed to process batch data frame", e), e)
   return typed_counter_with_examples
 
@@ -137,28 +140,21 @@ def calculate_and_output_counts(argv):
 
   csv_writer = csv.writer(sys.stdout, delimiter=args.delimiter)
 
-  columns = pd.read_csv(
-    sys.stdin,
-    sep=args.delimiter,
-    nrows=1
-  ).columns
-
   # only set the column types we need, otherwise use object
   # (this will be faster and more reliable than inferring the column type)
-  column_dtype = dict(zip(columns, ['object'] * len(columns)))
-  column_dtype['reference_count'] = int
-  column_dtype['has_references'] = int
-  LOGGER.info('columns: %s', columns)
+  column_dtype = {
+    'reference_count': int,
+    'has_references': int
+  }
   LOGGER.info('column_dtype: %s', column_dtype)
   LOGGER.info('batch size: %s', args.batch_size)
 
-  df_batches = pd.read_csv(
+  df_batches = read_csv_with_default_dtype(
     sys.stdin,
     sep=args.delimiter,
-    header=None,
-    names=columns,
     chunksize=args.batch_size,
-    dtype=column_dtype
+    dtype=column_dtype,
+    default_dtype='object'
   )
 
   try:

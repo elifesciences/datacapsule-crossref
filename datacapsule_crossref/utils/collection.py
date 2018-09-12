@@ -99,3 +99,19 @@ def iter_dict_to_list(iterable, fields):
     [item.get(field) for field in fields]
     for item in iterable
   )
+
+def extend_dict(d, *other_dicts, **kwargs):
+  """
+  example:
+  extend_dict(d1, d2)
+  is equivalent to Python 3 syntax:
+  {
+    **d1,
+    **d2
+  }
+  """
+  d = d.copy()
+  for other_dict in other_dicts:
+    d.update(other_dict)
+  d.update(kwargs)
+  return d
