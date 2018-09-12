@@ -12,7 +12,7 @@ from future.utils import raise_from
 import numpy as np
 import pandas as pd
 
-from datacapsule_crossref.collection_utils import peek
+from datacapsule_crossref.utils.collection import peek
 
 def get_args_parser():
   parser = argparse.ArgumentParser(
