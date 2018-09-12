@@ -13,14 +13,9 @@ from tqdm import tqdm
 from six import string_types
 from future.utils import raise_from
 
-from datacapsule_crossref.utils import (
-  makedirs,
-  write_csv
-)
-
-from datacapsule_crossref.collection_utils import (
-  iter_sort_window
-)
+from datacapsule_crossref.utils.io import makedirs
+from datacapsule_crossref.utils.csv import write_csv
+from datacapsule_crossref.utils.collection import iter_sort_window
 
 from datacapsule_crossref.doi_utils import clean_doi
 

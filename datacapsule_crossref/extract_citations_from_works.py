@@ -11,11 +11,9 @@ from queue import Queue
 
 from tqdm import tqdm
 
-from datacapsule_crossref.utils import (
-  makedirs,
-  write_csv,
-  iter_dict_to_list
-)
+from datacapsule_crossref.utils.io import makedirs
+from datacapsule_crossref.utils.csv import write_csv
+from datacapsule_crossref.utils.collection import iter_dict_to_list
 
 from datacapsule_crossref.doi_utils import clean_doi
 

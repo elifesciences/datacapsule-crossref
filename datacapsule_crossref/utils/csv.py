@@ -1,38 +1,11 @@
-import os
-import errno
 import csv
+import os
 
 import six
-import requests
-from requests.packages.urllib3 import Retry
+
 
 TEMP_FILE_SUFFIX = '.part'
 
-def makedirs(path, exist_ok=False):
-  try:
-    # Python 3
-    os.makedirs(path, exist_ok=exist_ok)
-  except TypeError:
-    # Python 2
-    try:
-      os.makedirs(path)
-    except OSError as e:
-      if e.errno != errno.EEXIST:
-        raise
-
-def configure_session_retry(
-  session=None, max_retries=3, backoff_factor=1, status_forcelist=None,
-  **kwargs):
-
-  retry = Retry(
-    connect=max_retries,
-    read=max_retries,
-    status_forcelist=status_forcelist,
-    redirect=5,
-    backoff_factor=backoff_factor
-  )
-  session.mount('http://', requests.adapters.HTTPAdapter(max_retries=retry, **kwargs))
-  session.mount('https://', requests.adapters.HTTPAdapter(max_retries=retry, **kwargs))
 
 def gzip_open(filename, mode):
   import gzip
@@ -90,9 +63,3 @@ def write_csv(filename, columns, iterable, delimiter=None):
     write_csv_rows(writer, iterable)
   if not is_stdout:
     os.rename(temp_filename, filename)
-
-def iter_dict_to_list(iterable, fields):
-  return (
-    [item.get(field) for field in fields]
-    for item in iterable
-  )

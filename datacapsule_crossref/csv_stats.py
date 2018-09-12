@@ -12,7 +12,7 @@ from future.utils import raise_from
 import numpy as np
 import pandas as pd
 
-from datacapsule_crossref.collection_utils import peek
+from datacapsule_crossref.utils.collection import peek
 
 def get_args_parser():
   parser = argparse.ArgumentParser(
@@ -136,6 +136,9 @@ def calculate_counts_from_df_batches(df_batches, groupby_columns=None):
 
 def calculate_and_output_counts(argv):
   args = get_args_parser().parse_args(argv)
+
+  csv.field_size_limit(min(2147483647, sys.maxsize))
+
   groupby_columns = (
     [s.strip() for s in args.group_by.split(',')]
     if args.group_by
