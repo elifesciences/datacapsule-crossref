@@ -1,4 +1,4 @@
 ARG base_image
 FROM ${base_image}
 
-COPY pytest.ini setup.cfg ./
+COPY .flake8 .pylintrc pytest.ini setup.cfg ./

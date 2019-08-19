@@ -20,11 +20,25 @@ build-dev:
 	$(DOCKER_COMPOSE) build datacapsule-crossref-base-dev datacapsule-crossref-dev
 
 
+flake8:
+	$(DEV_RUN) flake8 datacapsule_crossref
+
+
+pylint:
+	$(DEV_RUN) pylint datacapsule_crossref
+
+
 pytest:
 	$(DEV_RUN) pytest -p no:cacheprovider $(ARGS)
 
 
+lint: \
+	flake8 \
+	pylint
+
+
 test: \
+	lint \
 	pytest
 
 
