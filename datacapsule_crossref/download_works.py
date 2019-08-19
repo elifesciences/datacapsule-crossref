@@ -24,8 +24,7 @@ LZMA = "lzma"
 DEFAULT_CROSSREF_API_URL = 'http://api.crossref.org/works'
 
 
-def get_logger():
-    return logging.getLogger(__name__)
+LOGGER = logging.getLogger(__name__)
 
 
 def get_args_parser():
@@ -82,8 +81,6 @@ def add_url_parameters(base_url, parameters):
 
 
 def iter_page_responses(base_url, max_retries, start_cursor='*'):
-    logger = get_logger()
-
     next_cursor_pattern = re.compile(r'"next-cursor":"([^"]+?)"')
 
     with FuturesSession(max_workers=10) as session:
@@ -111,7 +108,7 @@ def iter_page_responses(base_url, max_retries, start_cursor='*'):
             first_chars = first_bytes.decode()
             m = next_cursor_pattern.search(first_chars)
             next_cursor = m.group(1).replace('\\/', '/') if m else None
-            logger.debug('next_cursor: %s', next_cursor)
+            LOGGER.debug('next_cursor: %s', next_cursor)
             if next_cursor == previous_cursor:
                 next_cursor = None
 
@@ -121,7 +118,7 @@ def iter_page_responses(base_url, max_retries, start_cursor='*'):
                 future_response = request_page(next_cursor)
                 previous_cursor = next_cursor
             else:
-                logger.info('no next_cursor found, end reached?')
+                LOGGER.info('no next_cursor found, end reached?')
                 future_response = None
 
             remaining_bytes = raw.read()
@@ -130,8 +127,6 @@ def iter_page_responses(base_url, max_retries, start_cursor='*'):
 
 
 def save_page_responses(base_url, zip_filename, max_retries, items_per_page, compression):
-    logger = get_logger()
-
     state_filename = zip_filename + '.meta'
     page_filename_pattern = '{}-page-{{}}-offset-{{}}.json'.format(
         os.path.splitext(os.path.basename(zip_filename))[0]
@@ -153,7 +148,7 @@ def save_page_responses(base_url, zip_filename, max_retries, items_per_page, com
                     previous_state['items_per_page']
                 ))
 
-    logger.info('start cursor: %s (offset %s, total: %s)',
+    LOGGER.info('start cursor: %s (offset %s, total: %s)',
                 start_cursor, offset, total_results)
 
     total_results_pattern = re.compile(r'"total-results":(\d+)\D')
@@ -169,7 +164,7 @@ def save_page_responses(base_url, zip_filename, max_retries, items_per_page, com
             )
 
             for next_cursor, page_response in page_responses:
-                logger.debug('response: %s (%s)', len(
+                LOGGER.debug('response: %s (%s)', len(
                     page_response), next_cursor)
 
                 if total_results is None:
