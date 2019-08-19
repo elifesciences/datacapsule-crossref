@@ -14,5 +14,3 @@ COPY requirements.dev.txt ./
 RUN if [ "${install_dev}" = "y" ]; then pip install -r requirements.dev.txt; fi
 
 COPY datacapsule_crossref ./datacapsule_crossref
-
-COPY pytest.ini setup.cfg ./

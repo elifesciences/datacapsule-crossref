@@ -3,7 +3,7 @@ DOCKER_COMPOSE_CI = docker-compose -f docker-compose.yml
 DOCKER_COMPOSE = $(DOCKER_COMPOSE_DEV)
 
 RUN = $(DOCKER_COMPOSE) run --rm datacapsule-crossref
-DEV_RUN = $(RUN)
+DEV_RUN = $(DOCKER_COMPOSE) run --rm datacapsule-crossref-dev
 
 
 ARGS =
@@ -16,6 +16,10 @@ build:
 	$(DOCKER_COMPOSE) build datacapsule-crossref
 
 
+build-dev:
+	$(DOCKER_COMPOSE) build datacapsule-crossref-dev
+
+
 pytest:
 	$(DEV_RUN) pytest -p no:cacheprovider $(ARGS)
 
@@ -26,7 +30,7 @@ test: \
 
 ci-build-and-test:
 	$(MAKE) DOCKER_COMPOSE="$(DOCKER_COMPOSE_CI)" \
-		build test
+		build build-dev test
 
 
 ci-clean:

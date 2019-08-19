@@ -6,8 +6,26 @@ services:
       context: .
       dockerfile: Dockerfile
       args:
-        install_dev: y
+        install_dev: n
     image: ${IMAGE_NAME}:${IMAGE_TAG}
+
+  datacapsule-crossref-base-dev:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args: 
+        install_dev: y
+    image: ${IMAGE_NAME}-base-dev:${IMAGE_TAG}
+
+  datacapsule-crossref-dev:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+      args: 
+        base_image: ${IMAGE_NAME}-base-dev:${IMAGE_TAG}
+    image: ${IMAGE_NAME}-dev:${IMAGE_TAG}
+    depends_on:
+      - datacapsule-crossref-base-dev
 
   datacapsule-crossref-jupyter:
     build:
