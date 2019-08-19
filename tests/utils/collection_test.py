@@ -1,4 +1,4 @@
-from .collection import (
+from datacapsule_crossref.utils.collection import (
     iter_sort_window
 )
 

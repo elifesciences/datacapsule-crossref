@@ -21,11 +21,11 @@ build-dev:
 
 
 flake8:
-	$(DEV_RUN) flake8 datacapsule_crossref
+	$(DEV_RUN) flake8 tests
 
 
 pylint:
-	$(DEV_RUN) pylint datacapsule_crossref
+	$(DEV_RUN) pylint tests
 
 
 pytest:

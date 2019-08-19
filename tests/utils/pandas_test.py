@@ -1,7 +1,7 @@
 import csv
 from io import StringIO
 
-from .pandas import read_csv_with_default_dtype
+from datacapsule_crossref.utils.pandas import read_csv_with_default_dtype
 
 
 def _to_csv(rows):
