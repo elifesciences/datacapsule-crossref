@@ -15,6 +15,11 @@ import pandas as pd
 from datacapsule_crossref.utils.collection import peek
 
 
+CALCULATED_NUMERIC_COLUMNS = {
+    'min', 'max', 'sum', 'count_numeric', 'count_non_zero', 'count_zero'
+}
+
+
 def get_args_parser():
     parser = argparse.ArgumentParser(
         description='Automatically calculate sums of numeric values'
@@ -98,7 +103,7 @@ def calculate_counts_from_df_batches(df_batches, groupby_columns=None):
                     )
                 elif len(column):
                     if column_type == 'numeric':
-                        for x in {'min', 'max', 'sum', 'count_numeric', 'count_non_zero', 'count_zero'}:
+                        for x in CALCULATED_NUMERIC_COLUMNS:
                             del stats[x]
                     stats['type'] = 'str'
             return stats
@@ -137,7 +142,7 @@ def calculate_counts_from_df_batches(df_batches, groupby_columns=None):
                         stats_of_column['sum'], stats_of_column['count_non_zero']
                     )
                 for k in iterkeys(stats_of_column):
-                    if not k in stats:
+                    if k not in stats:
                         stats[k] = [None] * num_columns
                     stats[k][i] = stats_of_column[k]
         if not groupby_columns:
