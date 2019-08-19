@@ -1,11 +1,17 @@
 version: '3'
 
 services:
+    datacapsule-crossref:
+        build:
+            context: .
+            dockerfile: Dockerfile
+        image: ${IMAGE_NAME}:${IMAGE_TAG}
+
     datacapsule-crossref-jupyter:
         build:
             context: .
             dockerfile: Dockerfile.jupyter
-        image: ${IMAGE_NAME}:${IMAGE_TAG}
+        image: ${IMAGE_NAME}-jupyter:${IMAGE_TAG}
         command: start-notebook.sh --NotebookApp.token=''
         ports:
             - "${DATACAPSULE_CROSSREF_JUPYTER_PORT}:8888"
