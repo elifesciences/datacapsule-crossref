@@ -80,9 +80,50 @@ def add_url_parameters(base_url, parameters):
     )
 
 
-def iter_page_responses(base_url, max_retries, start_cursor='*'):
-    next_cursor_pattern = re.compile(r'"next-cursor":"([^"]+?)"')
+def iter_page_responses_from_session(
+        session: FuturesSession,
+        base_url: str,
+        start_cursor: str = '*'):
 
+    def request_page(cursor):
+        url = add_url_parameters(base_url, {'cursor': cursor})
+        return session.get(url, stream=True)
+
+    next_cursor_pattern = re.compile(r'"next-cursor":\s*"([^"]+?)"')
+    future_response = request_page(start_cursor)
+    previous_cursor = start_cursor
+    while future_response:
+        response = future_response.result()
+        response.raise_for_status()
+
+        # try to find the next cursor in the first response characters
+        # we don't need to wait until the whole response has been received
+        raw = response.raw
+        raw.decode_content = True
+        first_bytes = raw.read(1000)
+        first_chars = first_bytes.decode()
+        LOGGER.debug('first_chars: %s', first_chars)
+        m = next_cursor_pattern.search(first_chars)
+        next_cursor = m.group(1).replace('\\/', '/') if m else None
+        LOGGER.debug('next_cursor: %s', next_cursor)
+        if next_cursor == previous_cursor:
+            next_cursor = None
+
+        if next_cursor:
+            # request the next page as soon as possible,
+            # we will read the result in the next iteration
+            future_response = request_page(next_cursor)
+            previous_cursor = next_cursor
+        else:
+            LOGGER.info('no next_cursor found, end reached?')
+            future_response = None
+
+        remaining_bytes = raw.read()
+        content = first_bytes + remaining_bytes
+        yield next_cursor, content
+
+
+def iter_page_responses(base_url, max_retries, start_cursor='*'):
     with FuturesSession(max_workers=10) as session:
         configure_session_retry(
             session=session,
@@ -90,40 +131,11 @@ def iter_page_responses(base_url, max_retries, start_cursor='*'):
             status_forcelist=[500, 502, 503, 504]
         )
 
-        def request_page(cursor):
-            url = add_url_parameters(base_url, {'cursor': cursor})
-            return session.get(url, stream=True)
-
-        future_response = request_page(start_cursor)
-        previous_cursor = start_cursor
-        while future_response:
-            response = future_response.result()
-            response.raise_for_status()
-
-            # try to find the next cursor in the first response characters
-            # we don't need to wait until the whole response has been received
-            raw = response.raw
-            raw.decode_content = True
-            first_bytes = raw.read(1000)
-            first_chars = first_bytes.decode()
-            m = next_cursor_pattern.search(first_chars)
-            next_cursor = m.group(1).replace('\\/', '/') if m else None
-            LOGGER.debug('next_cursor: %s', next_cursor)
-            if next_cursor == previous_cursor:
-                next_cursor = None
-
-            if next_cursor:
-                # request the next page as soon as possible,
-                # we will read the result in the next iteration
-                future_response = request_page(next_cursor)
-                previous_cursor = next_cursor
-            else:
-                LOGGER.info('no next_cursor found, end reached?')
-                future_response = None
-
-            remaining_bytes = raw.read()
-            content = first_bytes + remaining_bytes
-            yield next_cursor, content
+        yield from iter_page_responses_from_session(
+            session=session,
+            base_url=base_url,
+            start_cursor=start_cursor
+        )
 
 
 def save_page_responses(base_url, zip_filename, max_retries, items_per_page, compression):
