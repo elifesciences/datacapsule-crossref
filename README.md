@@ -2,9 +2,11 @@
 
 Retrieve and extract citations from Crossref data.
 
+The links to the latest dumps can be found in the [notebook](https://elifesci.org/crossref-data-notebook).
+
 ## Pre-requsites
 
-* Python 2 or 3 (Python 3 preferred)
+* Python 3
 * _pipeview_ (pv) to show progress in some shell scripts (ubuntu: `sudo apt-get install pv`)
 
 ## Setup
