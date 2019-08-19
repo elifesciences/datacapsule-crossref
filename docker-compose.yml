@@ -35,5 +35,3 @@ services:
     command: start-notebook.sh --NotebookApp.token=''
     ports:
       - "${DATACAPSULE_CROSSREF_JUPYTER_PORT}:8888"
-    volumes:
-      - .:/home/jovyan/datacapsule-crossref-jupyter

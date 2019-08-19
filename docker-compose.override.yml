@@ -1,0 +1,6 @@
+version: '3'
+
+services:
+  datacapsule-crossref-jupyter:
+    volumes:
+      - .:/home/jovyan/datacapsule-crossref-jupyter
