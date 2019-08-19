@@ -7,11 +7,17 @@ import re
 import json
 import zipfile
 from zipfile import ZipFile
+from asyncio import Future
+from typing import Tuple
+
+from urllib3.exceptions import ProtocolError
 
 from six.moves.urllib.parse import urlencode
 
+from requests import Response
 from requests_futures.sessions import FuturesSession
 from tqdm import tqdm
+from waiter import wait
 
 from datacapsule_crossref.utils.io import makedirs
 from datacapsule_crossref.utils.requests import configure_session_retry
@@ -24,8 +30,7 @@ LZMA = "lzma"
 DEFAULT_CROSSREF_API_URL = 'http://api.crossref.org/works'
 
 
-def get_logger():
-    return logging.getLogger(__name__)
+LOGGER = logging.getLogger(__name__)
 
 
 def get_args_parser():
@@ -81,11 +86,104 @@ def add_url_parameters(base_url, parameters):
     )
 
 
+class PageResponseIterator:
+    def __init__(
+            self,
+            session: FuturesSession,
+            base_url: str,
+            start_cursor: str = '*'):
+        self.session = session
+        self.base_url = base_url
+        self.current_cursor = start_cursor
+        self._next_cursor_pattern = re.compile(r'"next-cursor":\s*"([^"]+?)"')
+        self._future_response_by_cursor_map = {}
+
+    def get_cache_size(self) -> int:
+        LOGGER.debug('cached cursors: %s', self._future_response_by_cursor_map.keys())
+        return len(self._future_response_by_cursor_map)
+
+    def _request_page(self, cursor: str) -> Future:
+        LOGGER.debug('requesting page for cursor: %s', cursor)
+        url = add_url_parameters(self.base_url, {'cursor': cursor})
+        return self.session.get(url, stream=True)
+
+    def _remove_response_from_cache(self, cursor: str):
+        try:
+            del self._future_response_by_cursor_map[cursor]
+        except KeyError:
+            pass
+
+    def _get_future_response(self, cursor: str) -> Future:
+        future_response = self._future_response_by_cursor_map.get(cursor)
+        if not future_response:
+            future_response = self._request_page(cursor)
+            self._future_response_by_cursor_map[cursor] = future_response
+        return future_response
+
+    def _get_response(self, cursor: str) -> Response:
+        try:
+            response = self._get_future_response(cursor).result()
+            response.raise_for_status()
+            return response
+        except Exception:
+            self._remove_response_from_cache(cursor)
+            raise
+
+    def _preload_future_response(self, cursor: str):
+        self._get_future_response(cursor)
+
+    def _get_next_cursor_and_response_content(self, current_cursor: str) -> Tuple[str, str]:
+        response = self._get_response(current_cursor)
+        self._remove_response_from_cache(current_cursor)
+
+        # try to find the next cursor in the first response characters
+        # we don't need to wait until the whole response has been received
+        raw = response.raw
+        raw.decode_content = True
+        first_bytes = raw.read(1000)
+        first_chars = first_bytes.decode()
+        m = self._next_cursor_pattern.search(first_chars)
+        next_cursor = m.group(1).replace('\\/', '/') if m else None
+        LOGGER.debug('next_cursor: %s', next_cursor)
+        if next_cursor == current_cursor:
+            next_cursor = None
+
+        if next_cursor:
+            # request the next page as soon as possible,
+            # we will read the result in the next iteration
+            self._preload_future_response(next_cursor)
+        else:
+            LOGGER.info('no next_cursor found, end reached?')
+
+        remaining_bytes = raw.read()
+        content = first_bytes + remaining_bytes
+        return next_cursor, content
+
+    def _get_next_cursor_and_response_content_with_retry(
+            self, current_cursor: str) -> Tuple[str, str]:
+        for backoff in wait(0.1) * 2:
+            try:
+                return self._get_next_cursor_and_response_content(current_cursor)
+            except ProtocolError as e:
+                LOGGER.error(
+                    'protocol error (%s), retrying (backoff: %s)', e, backoff, exc_info=e
+                )
+
+    def __iter__(self):
+        while self.current_cursor:
+            next_cursor, content = self._get_next_cursor_and_response_content_with_retry(
+                self.current_cursor
+            )
+            yield next_cursor, content
+
+            self.current_cursor = next_cursor
+
+
+def iter_page_responses_from_session(*args, **kwargs):
+    yield from PageResponseIterator(*args, **kwargs)
+
+
 def iter_page_responses(base_url, max_retries, start_cursor='*'):
-    logger = get_logger()
-
-    next_cursor_pattern = re.compile(r'"next-cursor":"([^"]+?)"')
-
     with FuturesSession(max_workers=10) as session:
         configure_session_retry(
             session=session,
@@ -93,45 +191,14 @@ def iter_page_responses(base_url, max_retries, start_cursor='*'):
             status_forcelist=[500, 502, 503, 504]
         )
 
-        def request_page(cursor):
-            url = add_url_parameters(base_url, {'cursor': cursor})
-            return session.get(url, stream=True)
-
-        future_response = request_page(start_cursor)
-        previous_cursor = start_cursor
-        while future_response:
-            response = future_response.result()
-            response.raise_for_status()
-
-            # try to find the next cursor in the first response characters
-            # we don't need to wait until the whole response has been received
-            raw = response.raw
-            raw.decode_content = True
-            first_bytes = raw.read(1000)
-            first_chars = first_bytes.decode()
-            m = next_cursor_pattern.search(first_chars)
-            next_cursor = m.group(1).replace('\\/', '/') if m else None
-            logger.debug('next_cursor: %s', next_cursor)
-            if next_cursor == previous_cursor:
-                next_cursor = None
-
-            if next_cursor:
-                # request the next page as soon as possible,
-                # we will read the result in the next iteration
-                future_response = request_page(next_cursor)
-                previous_cursor = next_cursor
-            else:
-                logger.info('no next_cursor found, end reached?')
-                future_response = None
-
-            remaining_bytes = raw.read()
-            content = first_bytes + remaining_bytes
-            yield next_cursor, content
+        yield from iter_page_responses_from_session(
+            session=session,
+            base_url=base_url,
+            start_cursor=start_cursor
+        )
 
 
 def save_page_responses(base_url, zip_filename, max_retries, items_per_page, compression):
-    logger = get_logger()
-
     state_filename = zip_filename + '.meta'
     page_filename_pattern = '{}-page-{{}}-offset-{{}}.json'.format(
         os.path.splitext(os.path.basename(zip_filename))[0]
@@ -153,7 +220,7 @@ def save_page_responses(base_url, zip_filename, max_retries, items_per_page, com
                     previous_state['items_per_page']
                 ))
 
-    logger.info('start cursor: %s (offset %s, total: %s)',
+    LOGGER.info('start cursor: %s (offset %s, total: %s)',
                 start_cursor, offset, total_results)
 
     total_results_pattern = re.compile(r'"total-results":(\d+)\D')
@@ -169,7 +236,7 @@ def save_page_responses(base_url, zip_filename, max_retries, items_per_page, com
             )
 
             for next_cursor, page_response in page_responses:
-                logger.debug('response: %s (%s)', len(
+                LOGGER.debug('response: %s (%s)', len(
                     page_response), next_cursor)
 
                 if total_results is None:
