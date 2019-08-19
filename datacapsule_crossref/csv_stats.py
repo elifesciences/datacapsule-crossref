@@ -107,7 +107,7 @@ def calculate_counts_from_df_batches(df_batches, groupby_columns=None):
                             del stats[x]
                     stats['type'] = 'str'
             return stats
-        except Exception as e:
+        except Exception as e:  # pylint: disable=broad-except
             raise_from(RuntimeError(
                 'failed to update stats for {}'.format(column)), e)
     stats_by_column_by_group = dict()

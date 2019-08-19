@@ -1,5 +1,6 @@
 from collections import deque
 from heapq import heappush, heappop, heappushpop
+from functools import partial
 import itertools
 
 from future.utils import raise_from
@@ -25,7 +26,7 @@ class SimpleCounter(object):
 
 def iter_uniq_window(iterable, window_size, key=None, on_dropped_item=None):
     if key is None:
-        def key(v): return v
+        key = _identity
     previous_keys = deque()
     counts = SimpleCounter()
     for item in iterable:
@@ -40,6 +41,18 @@ def iter_uniq_window(iterable, window_size, key=None, on_dropped_item=None):
             on_dropped_item(item)
 
 
+def _wrap_with_index(unwrapped, key_fn, indices):
+    return key_fn(unwrapped), next(indices), unwrapped
+
+
+def _unwrap_with_index(wrapped):
+    return wrapped[2]
+
+
+def _identity(x):
+    return x
+
+
 def iter_sort_window(
         iterable, window_size, key=None, remove_duplicates=False, on_dropped_item=None):
 
@@ -51,10 +64,10 @@ def iter_sort_window(
         # we can't have equal keys, as the unwrapped may not be ordered
         # add indices as the second value in case the provided key is the same
         indices = itertools.count()
-        def wrap(unwrapped): return (key(unwrapped), next(indices), unwrapped)
-        def unwrap(wrapped): return wrapped[2]
+        wrap = partial(_wrap_with_index, key_fn=key, indices=indices)
+        unwrap = _unwrap_with_index
     else:
-        def wrap(x): return x
+        wrap = _identity
         unwrap = wrap
 
     def iter_sort():
@@ -74,9 +87,10 @@ def iter_sort_window(
                         len(heap), heap[:100])
                 ), e)
     if remove_duplicates:
-        for item in iter_uniq_window(
+        uniq_items = iter_uniq_window(
             iter_sort(), window_size, key=key, on_dropped_item=on_dropped_item
-        ):
+        )
+        for item in uniq_items:
             yield item
     else:
         for item in iter_sort():

@@ -61,10 +61,12 @@ class CounterWithExamples(object):
             self.example_map[key].append(example)
 
     def __iter__(self):
-        return iter(sorted((
+        items = (
             (key, count, self.example_map[key])
             for key, count in self.count_map.items()
-        ),
+        )
+        return iter(sorted(
+            items,
             key=lambda x: x[1],
             reverse=True
         ))
@@ -86,11 +88,13 @@ class TypedCounterWithExample(object):
 
 
 def update_typed_counter_with_batch(typed_counter_with_examples, df):
-    for key, values in [
+    named_simple_columns = [
         ('publisher', df['publisher']),
         ('countainer_title', df['container_title']),
         ('first_subject_area', df['first_subject_area']),
-            ('created', pd.to_datetime(df['created']).dt.year)]:
+        ('created', pd.to_datetime(df['created']).dt.year)
+    ]
+    for key, values in named_simple_columns:
         for doi, value in zip(df['doi'], values):
             typed_counter_with_examples.add(
                 'total_{}'.format(key),
@@ -100,11 +104,13 @@ def update_typed_counter_with_batch(typed_counter_with_examples, df):
     df_non_oa_reference = df[(df['reference_count'] > 0)
                              & (df['has_references'] == 0)]
     if len(df_non_oa_reference) > 0:
-        for key, values in [
+        named_simple_oa_columns = [
             ('publisher', df_non_oa_reference['publisher']),
             ('countainer_title', df_non_oa_reference['container_title']),
             ('first_subject_area', df_non_oa_reference['first_subject_area']),
-                ('created', pd.to_datetime(df_non_oa_reference['created']).dt.year)]:
+            ('created', pd.to_datetime(df_non_oa_reference['created']).dt.year)
+        ]
+        for key, values in named_simple_oa_columns:
             for doi, value in zip(df_non_oa_reference['doi'], values):
                 typed_counter_with_examples.add(
                     'non_oa_ref_{}'.format(key),
@@ -136,7 +142,7 @@ def calculate_counts_from_rows(df_batches):
         LOGGER.info('processing batch: %s', df.shape)
         try:
             update_typed_counter_with_batch(typed_counter_with_examples, df)
-        except Exception as e:
+        except Exception as e:  # pylint: disable=broad-except
             raise_from(ProcessDataFrameError(
                 df, "failed to process batch data frame", e), e)
     return typed_counter_with_examples

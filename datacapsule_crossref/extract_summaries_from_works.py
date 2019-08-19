@@ -183,7 +183,7 @@ def extract_summaries_from_response(response, clean_doi_enabled):
     for i, work in enumerate(items):
         try:
             yield extract_summary_from_work(work, doi_filter)
-        except Exception as e:
+        except Exception as e:  # pylint: disable=broad-except
             raise_from(RuntimeError('failed to process work {}'.format(i)), e)
 
 
@@ -208,7 +208,7 @@ def extract_summaries_to_queue(input_queue, output_queue, clean_doi_enabled):
                 }
                 for summary in extract_summaries_from_response(response, clean_doi_enabled)
             ])
-        except Exception as e:
+        except Exception as e:  # pylint: disable=broad-except
             raise_from(RuntimeError('failed to process: {}'.format(name)), e)
     output_queue.put(None)
 
