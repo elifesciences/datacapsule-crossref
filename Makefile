@@ -17,7 +17,7 @@ build:
 
 
 build-dev:
-	$(DOCKER_COMPOSE) build datacapsule-crossref-dev
+	$(DOCKER_COMPOSE) build datacapsule-crossref-base-dev datacapsule-crossref-dev
 
 
 pytest:
