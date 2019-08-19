@@ -8,6 +8,7 @@ import json
 import zipfile
 from zipfile import ZipFile
 from asyncio import Future
+from typing import Tuple
 
 from urllib3.exceptions import ProtocolError
 
@@ -16,6 +17,7 @@ from six.moves.urllib.parse import urlencode
 from requests import Response
 from requests_futures.sessions import FuturesSession
 from tqdm import tqdm
+from waiter import wait
 
 from datacapsule_crossref.utils.io import makedirs
 from datacapsule_crossref.utils.requests import configure_session_retry
@@ -130,39 +132,52 @@ class PageResponseIterator:
     def _preload_future_response(self, cursor: str):
         self._get_future_response(cursor)
 
+    def _get_next_cursor_and_response_content(self, current_cursor: str) -> Tuple[str, str]:
+        response = self._get_response(current_cursor)
+        self._remove_response_from_cache(current_cursor)
+
+        # try to find the next cursor in the first response characters
+        # we don't need to wait until the whole response has been received
+        raw = response.raw
+        raw.decode_content = True
+        first_bytes = raw.read(1000)
+        first_chars = first_bytes.decode()
+        LOGGER.debug('first_chars: %s', first_chars)
+        m = self._next_cursor_pattern.search(first_chars)
+        next_cursor = m.group(1).replace('\\/', '/') if m else None
+        LOGGER.debug('next_cursor: %s', next_cursor)
+        if next_cursor == current_cursor:
+            next_cursor = None
+
+        if next_cursor:
+            # request the next page as soon as possible,
+            # we will read the result in the next iteration
+            self._preload_future_response(next_cursor)
+        else:
+            LOGGER.info('no next_cursor found, end reached?')
+
+        remaining_bytes = raw.read()
+        content = first_bytes + remaining_bytes
+        return next_cursor, content
+
+    def _get_next_cursor_and_response_content_with_retry(
+            self, current_cursor: str) -> Tuple[str, str]:
+        for backoff in wait(0.1) * 2:
+            try:
+                return self._get_next_cursor_and_response_content(current_cursor)
+            except ProtocolError as e:
+                LOGGER.error(
+                    'protocol error (%s), retrying (backoff: %s)', e, backoff, exc_info=e
+                )
+
     def __iter__(self):
         while self.current_cursor:
-            try:
-                response = self._get_response(self.current_cursor)
-                self._remove_response_from_cache(self.current_cursor)
+            next_cursor, content = self._get_next_cursor_and_response_content_with_retry(
+                self.current_cursor
+            )
+            yield next_cursor, content
 
-                # try to find the next cursor in the first response characters
-                # we don't need to wait until the whole response has been received
-                raw = response.raw
-                raw.decode_content = True
-                first_bytes = raw.read(1000)
-                first_chars = first_bytes.decode()
-                LOGGER.debug('first_chars: %s', first_chars)
-                m = self._next_cursor_pattern.search(first_chars)
-                next_cursor = m.group(1).replace('\\/', '/') if m else None
-                LOGGER.debug('next_cursor: %s', next_cursor)
-                if next_cursor == self.current_cursor:
-                    next_cursor = None
-
-                if next_cursor:
-                    # request the next page as soon as possible,
-                    # we will read the result in the next iteration
-                    self._preload_future_response(next_cursor)
-                else:
-                    LOGGER.info('no next_cursor found, end reached?')
-
-                remaining_bytes = raw.read()
-                content = first_bytes + remaining_bytes
-                yield next_cursor, content
-
-                self.current_cursor = next_cursor
-            except ProtocolError as e:
-                LOGGER.error('protocol error (%s), retrying', e, exc_info=e)
+            self.current_cursor = next_cursor
 
 
 def iter_page_responses_from_session(*args, **kwargs):
