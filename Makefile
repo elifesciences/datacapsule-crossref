@@ -38,7 +38,7 @@ lint: \
 
 
 test: \
-	lint
+	lint \
 	pytest
 
 
