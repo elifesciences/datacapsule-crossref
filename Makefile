@@ -26,7 +26,7 @@ test: \
 
 ci-build-and-test:
 	$(MAKE) DOCKER_COMPOSE="$(DOCKER_COMPOSE_CI)" \
-		build
+		build test
 
 
 ci-clean:
