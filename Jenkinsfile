@@ -20,6 +20,10 @@ elifePipeline {
                 elifeGitMoveToBranch commit, 'master'
             }
 
+            stage 'Merge to analysis', {
+                elifeGitMoveToBranch commit, 'analysis'
+            }
+
             stage 'Push unstable image', {
                 def image = DockerImage.elifesciences(this, 'datacapsule-crossref', commit)
                 def unstable_image = image.addSuffixAndTag('_unstable', commit)
