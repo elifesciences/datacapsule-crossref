@@ -1,4 +1,4 @@
-from .extract_citations_from_works import (
+from datacapsule_crossref.extract_citations_from_works import (
     extract_doi_from_reference
 )
 
