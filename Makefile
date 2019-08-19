@@ -6,9 +6,20 @@ VENV = venv
 PIP = $(VENV)/bin/pip
 PYTHON = $(VENV)/bin/python
 
-RUN = $(DOCKER_COMPOSE) run --rm datacapsule-crossref
+USER_ID = $(shell id -u)
+
+RUN = $(DOCKER_COMPOSE) run --user $(USER_ID) --rm datacapsule-crossref
 DEV_RUN = $(DOCKER_COMPOSE) run --rm datacapsule-crossref-dev
 
+
+CROSSREF_WORKS_API_URL = https://api.crossref.org/works
+ELIFE_CROSSREF_WORKS_API_URL = https://api.crossref.org/prefixes/10.7554/works
+
+COMPRESSION = lzma
+MAX_RETRIES =
+EMAIL =
+
+OUTPUT_SUFFIX =
 
 ARGS =
 
@@ -84,6 +95,22 @@ lint: \
 test: \
 	lint \
 	pytest
+
+
+download-works:
+	$(RUN) python -m datacapsule_crossref.download_works \
+		--base-url=$(CROSSREF_WORKS_API_URL) \
+		--compression=$(COMPRESSION) \
+		--email=$(EMAIL) \
+		--output-file=/data/crossref-works$(OUTPUT_SUFFIX).zip \
+		$(ARGS)
+
+
+download-works-elife:
+	$(MAKE) \
+		CROSSREF_WORKS_API_URL=$(ELIFE_CROSSREF_WORKS_API_URL) \
+		OUTPUT_SUFFIX=-elife \
+		download-works
 
 
 ci-build-and-test:
