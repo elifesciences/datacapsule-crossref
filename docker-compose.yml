@@ -1,13 +1,39 @@
 version: '3'
 
 services:
-    datacapsule-crossref-jupyter:
-        build:
-            context: .
-            dockerfile: Dockerfile.jupyter
-        image: ${IMAGE_NAME}:${IMAGE_TAG}
-        command: start-notebook.sh --NotebookApp.token=''
-        ports:
-            - "${DATACAPSULE_CROSSREF_JUPYTER_PORT}:8888"
-        volumes:
-            - .:/home/jovyan/datacapsule-crossref-jupyter
+  datacapsule-crossref:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        install_dev: n
+    image: ${IMAGE_NAME}:${IMAGE_TAG}
+
+  datacapsule-crossref-base-dev:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args: 
+        install_dev: y
+    image: ${IMAGE_NAME}-base-dev:${IMAGE_TAG}
+
+  datacapsule-crossref-dev:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+      args: 
+        base_image: ${IMAGE_NAME}-base-dev:${IMAGE_TAG}
+    image: ${IMAGE_NAME}-dev:${IMAGE_TAG}
+    depends_on:
+      - datacapsule-crossref-base-dev
+
+  datacapsule-crossref-jupyter:
+    build:
+      context: .
+      dockerfile: Dockerfile.jupyter
+    image: ${IMAGE_NAME}-jupyter:${IMAGE_TAG}
+    command: start-notebook.sh --NotebookApp.token=''
+    ports:
+      - "${DATACAPSULE_CROSSREF_JUPYTER_PORT}:8888"
+    volumes:
+      - .:/home/jovyan/datacapsule-crossref-jupyter
