@@ -8,6 +8,7 @@ import json
 import zipfile
 from zipfile import ZipFile
 from asyncio import Future
+from datetime import datetime
 from typing import Tuple
 
 from urllib3.exceptions import ProtocolError
@@ -208,6 +209,7 @@ def save_page_responses(base_url, zip_filename, max_retries, items_per_page, com
     offset = 0
     page_index = 0
     total_results = None
+    current_state = {}
     if os.path.isfile(state_filename):
         with open(state_filename, 'r') as meta_f:
             previous_state = json.load(meta_f)
@@ -219,6 +221,15 @@ def save_page_responses(base_url, zip_filename, max_retries, items_per_page, com
                 raise RuntimeError('please continue using the same items per page: {}'.format(
                     previous_state['items_per_page']
                 ))
+            current_state = {
+                **current_state,
+                **previous_state
+            }
+    if start_cursor == '*':
+        current_state = {
+            **current_state,
+            'start_timestamp': datetime.utcnow().isoformat()
+        }
 
     LOGGER.info('start cursor: %s (offset %s, total: %s)',
                 start_cursor, offset, total_results)
@@ -255,13 +266,16 @@ def save_page_responses(base_url, zip_filename, max_retries, items_per_page, com
                 pbar.update(items_per_page)
 
                 if next_cursor:
-                    state_str = json.dumps({
+                    current_state = {
+                        **current_state,
                         'cursor': next_cursor,
                         'offset': offset,
                         'page_index': page_index,
                         'items_per_page': items_per_page,
-                        'total_results': total_results
-                    })
+                        'total_results': total_results,
+                        'last_modified_timestamp': datetime.utcnow().isoformat()
+                    }
+                    state_str = json.dumps(current_state, indent=4)
                     with open(state_filename, 'w') as meta_f:
                         meta_f.write(state_str)
     finally:
