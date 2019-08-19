@@ -142,7 +142,6 @@ class PageResponseIterator:
         raw.decode_content = True
         first_bytes = raw.read(1000)
         first_chars = first_bytes.decode()
-        LOGGER.debug('first_chars: %s', first_chars)
         m = self._next_cursor_pattern.search(first_chars)
         next_cursor = m.group(1).replace('\\/', '/') if m else None
         LOGGER.debug('next_cursor: %s', next_cursor)
