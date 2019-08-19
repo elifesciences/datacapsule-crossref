@@ -8,7 +8,6 @@ import json
 import zipfile
 from zipfile import ZipFile
 from asyncio import Future
-from typing import Dict
 
 from urllib3.exceptions import ProtocolError
 
