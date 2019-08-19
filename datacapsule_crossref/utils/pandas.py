@@ -9,28 +9,28 @@ LOGGER = logging.getLogger(__name__)
 
 
 def read_csv_with_default_dtype(
-  f, *args, dtype=None, default_dtype=None, chunksize=None, **kwargs):
+        f, *args, dtype=None, default_dtype=None, chunksize=None, **kwargs):
 
-  if not default_dtype:
-    return pd.read_csv(f, *args, dtype=dtype, chunksize=chunksize, **kwargs)
+    if not default_dtype:
+        return pd.read_csv(f, *args, dtype=dtype, chunksize=chunksize, **kwargs)
 
-  LOGGER.debug('kwargs: %s', kwargs)
+    LOGGER.debug('kwargs: %s', kwargs)
 
-  header_row = f.readline()
-  columns = list(pd.read_csv(
-    StringIO(header_row),
-    *args,
-    **kwargs
-  ).columns)
+    header_row = f.readline()
+    columns = list(pd.read_csv(
+        StringIO(header_row),
+        *args,
+        **kwargs
+    ).columns)
 
-  LOGGER.info('columns: %s', columns)
+    LOGGER.info('columns: %s', columns)
 
-  dtype = extend_dict(
-    dict(zip(columns, ['object'] * len(columns))),
-    dtype
-  )
+    dtype = extend_dict(
+        dict(zip(columns, ['object'] * len(columns))),
+        dtype
+    )
 
-  return pd.read_csv(
-    f, *args, **kwargs,
-    header=None, names=columns, dtype=dtype, chunksize=chunksize
-  )
+    return pd.read_csv(
+        f, *args, **kwargs,
+        header=None, names=columns, dtype=dtype, chunksize=chunksize
+    )

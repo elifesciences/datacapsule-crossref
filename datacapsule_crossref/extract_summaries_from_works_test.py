@@ -1,7 +1,8 @@
 from .extract_summaries_from_works import (
-  clean_text
+    clean_text
 )
 
+
 class TestCleanText(object):
-  def test_(self):
-    pass
+    def test_(self):
+        pass
