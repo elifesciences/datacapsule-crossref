@@ -5,6 +5,8 @@ services:
         build:
             context: .
             dockerfile: Dockerfile
+            args:
+                install_dev: y
         image: ${IMAGE_NAME}:${IMAGE_TAG}
 
     datacapsule-crossref-jupyter:
