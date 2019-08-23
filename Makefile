@@ -134,6 +134,7 @@ extract-summaries-from-works:
   --input-file=/data/crossref-works$(OUTPUT_SUFFIX).zip \
   --output-file=/data/crossref-works$(OUTPUT_SUFFIX)-summaries.tsv.gz \
   --multi-processing \
+	--debug
 		$(ARGS)
 
 
@@ -176,6 +177,16 @@ generate-csv-stats-grouped-by-type-and-publisher:
 
 generate-csv-stats-grouped-by-type-and-publisher-elife:
 	$(MAKE) OUTPUT_SUFFIX=-elife generate-csv-stats-grouped-by-type-and-publisher
+
+
+generate-reference-stats:
+	$(RUN) reference-stats.sh \
+		/data/crossref-works$(OUTPUT_SUFFIX)-summaries.tsv.gz \
+		/data/crossref-works$(OUTPUT_SUFFIX)-reference-stat.tsv.gz
+
+
+generate-reference-stats-elife:
+	$(MAKE) OUTPUT_SUFFIX=-elife generate-reference-stats
 
 
 figshare-upload-works:
