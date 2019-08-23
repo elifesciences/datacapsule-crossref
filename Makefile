@@ -137,6 +137,22 @@ extract-summaries-from-works-elife:
 	$(MAKE) OUTPUT_SUFFIX=-elife extract-summaries-from-works
 
 
+sort-and-remove-duplicates-from-citations:
+	$(RUN) sort-and-remove-duplicates-from-csv.sh /data/crossref-works$(OUTPUT_SUFFIX)-citations.tsv.gz
+
+
+sort-and-remove-duplicates-from-citations-elife:
+	$(MAKE) OUTPUT_SUFFIX=-elife sort-and-remove-duplicates-from-citations
+
+
+sort-and-remove-duplicates-from-summaries:
+	$(RUN) sort-and-remove-duplicates-from-csv.sh /data/crossref-works$(OUTPUT_SUFFIX)-summaries.tsv.gz
+
+
+sort-and-remove-duplicates-from-summaries-elife:
+	$(MAKE) OUTPUT_SUFFIX=-elife sort-and-remove-duplicates-from-summaries
+
+
 ci-build-and-test:
 	$(MAKE) DOCKER_COMPOSE="$(DOCKER_COMPOSE_CI)" \
 		build build-dev test
