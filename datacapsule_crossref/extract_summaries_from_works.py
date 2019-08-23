@@ -269,7 +269,6 @@ def extract_summaries_from_works_direct(argv):
     makedirs(os.path.dirname(output_file), exist_ok=True)
 
     get_logger().info('output_file: %s', output_file)
-    get_logger().info('delimiter: %s (%s)', args.delimiter, len(args.delimiter))
 
     summaries = iter_sort_window(
         iter_zip_summaries(
