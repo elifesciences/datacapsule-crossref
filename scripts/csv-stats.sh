@@ -6,7 +6,7 @@ CSV_FILE="$1"
 OUTPUT_FILE="$2"
 
 if [ -z "$CSV_FILE" ] || [ -z "$OUTPUT_FILE" ]; then
-  echo "Usage: $0 <gzipped csv or tsv file> <output file>"
+  echo "Usage: $0 <gzipped csv or tsv file> <output file> [<args>]"
   exit 1
 fi
 
