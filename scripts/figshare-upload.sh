@@ -7,6 +7,13 @@
 # exit script if any command fails
 set -e
 
+echo "checking ${HOME}/.config/figshare/credentials"
+if [ -f "${HOME}/.config/figshare/credentials" ]; then
+  echo "reading ${HOME}/.config/figshare/credentials"
+  source "${HOME}/.config/figshare/credentials"
+fi
+
+echo "checking .config"
 if [ -f .config ]; then
   source .config
 fi
@@ -36,7 +43,9 @@ fi
 
 FILE_NAME=$(basename "$FILE_PATH")
 
+PART_PREFIX="$(dirname "$FILE_PATH")/part_"
 
+echo "PART_PREFIX=${PART_PREFIX}"
 
 # ####################################################################################
 
@@ -100,7 +109,7 @@ echo ''
 
 # Split item into needed parts 
 echo 'Spliting the provided item into parts process had begun...'
-split -b$PARTS_SIZE $FILE_PATH part_ --numeric=1 --suffix-length=3
+split -b$PARTS_SIZE $FILE_PATH "${PART_PREFIX}" --numeric=1 --suffix-length=3
 
 echo 'Process completed!'
 
@@ -113,7 +122,7 @@ echo ''
 echo 'Perform the PUT operation of parts...'
 for ((i=1; i<=$MAX_PART; i++))
 do 
-  PART_VALUE='part_'$(printf "%03d" $i)
+  PART_VALUE="${PART_PREFIX}"$(printf "%03d" $i)
   RESPONSE=$(curl -s -H 'Authorization: token '$ACCESS_TOKEN -X PUT "$UPLOAD_URL/$i" --data-binary @$PART_VALUE)
   echo "Done uploading part nr: $i/"$MAX_PART
 done
@@ -128,7 +137,7 @@ echo 'Done!'
 echo ''
 
 #remove the part files
-rm part_*
+rm "${PART_PREFIX}"*
 
 # List all of the existing items
 RESPONSE=$(curl -s -H 'Authorization: token '$ACCESS_TOKEN -X GET "https://api.figshare.com/v2/account/articles")

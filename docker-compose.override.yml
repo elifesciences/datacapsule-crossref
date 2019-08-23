@@ -4,6 +4,10 @@ services:
   datacapsule-crossref:
     volumes:
       - ./data:/data
+      - ~/.config/figshare:/$USER/.config/figshare
+    environment:
+      - USER=$USER
+      - HOME=/$USER
 
   datacapsule-crossref-jupyter:
     volumes:

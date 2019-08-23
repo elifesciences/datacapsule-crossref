@@ -97,6 +97,10 @@ test: \
 	pytest
 
 
+shell:
+	$(RUN) bash
+
+
 download-works:
 	$(RUN) python -m datacapsule_crossref.download_works \
 		--base-url=$(CROSSREF_WORKS_API_URL) \
@@ -111,6 +115,94 @@ download-works-elife:
 		CROSSREF_WORKS_API_URL=$(ELIFE_CROSSREF_WORKS_API_URL) \
 		OUTPUT_SUFFIX=-elife \
 		download-works
+
+
+extract-citations-from-works:
+	$(RUN) python -m datacapsule_crossref.extract_citations_from_works \
+		--input-file=/data/crossref-works$(OUTPUT_SUFFIX).zip \
+		--output-file=/data/crossref-works$(OUTPUT_SUFFIX)-citations.tsv.gz \
+		--multi-processing \
+		$(ARGS)
+
+
+extract-citations-from-works-elife:
+	$(MAKE) OUTPUT_SUFFIX=-elife extract-citations-from-works
+
+
+extract-summaries-from-works:
+	$(RUN) python -m datacapsule_crossref.extract_summaries_from_works \
+		--input-file=/data/crossref-works$(OUTPUT_SUFFIX).zip \
+		--output-file=/data/crossref-works$(OUTPUT_SUFFIX)-summaries.tsv.gz \
+		--multi-processing \
+		--debug
+		$(ARGS)
+
+
+extract-summaries-from-works-elife:
+	$(MAKE) OUTPUT_SUFFIX=-elife extract-summaries-from-works
+
+
+sort-and-remove-duplicates-from-citations:
+	$(RUN) sort-and-remove-duplicates-from-csv.sh /data/crossref-works$(OUTPUT_SUFFIX)-citations.tsv.gz
+
+
+sort-and-remove-duplicates-from-citations-elife:
+	$(MAKE) OUTPUT_SUFFIX=-elife sort-and-remove-duplicates-from-citations
+
+
+sort-and-remove-duplicates-from-summaries:
+	$(RUN) sort-and-remove-duplicates-from-csv.sh /data/crossref-works$(OUTPUT_SUFFIX)-summaries.tsv.gz
+
+
+sort-and-remove-duplicates-from-summaries-elife:
+	$(MAKE) OUTPUT_SUFFIX=-elife sort-and-remove-duplicates-from-summaries
+
+
+generate-csv-stats:
+	$(RUN) csv-stats.sh \
+		/data/crossref-works$(OUTPUT_SUFFIX)-summaries.tsv.gz \
+		/data/crossref-works$(OUTPUT_SUFFIX)-summaries-stat.tsv.gz
+
+
+generate-csv-stats-elife:
+	$(MAKE) OUTPUT_SUFFIX=-elife generate-csv-stats
+
+
+generate-csv-stats-grouped-by-type-and-publisher:
+	$(RUN) csv-stats.sh \
+		/data/crossref-works$(OUTPUT_SUFFIX)-summaries.tsv.gz \
+		/data/crossref-works$(OUTPUT_SUFFIX)-summaries-by-type-and-publisher-stat.tsv.gz \
+		--group-by=type,publisher
+
+
+generate-csv-stats-grouped-by-type-and-publisher-elife:
+	$(MAKE) OUTPUT_SUFFIX=-elife generate-csv-stats-grouped-by-type-and-publisher
+
+
+generate-reference-stats:
+	$(RUN) reference-stats.sh \
+		/data/crossref-works$(OUTPUT_SUFFIX)-summaries.tsv.gz \
+		/data/crossref-works$(OUTPUT_SUFFIX)-reference-stat.tsv.gz
+
+
+generate-reference-stats-elife:
+	$(MAKE) OUTPUT_SUFFIX=-elife generate-reference-stats
+
+
+figshare-upload-works:
+	$(RUN) figshare-upload.sh /data/crossref-works$(OUTPUT_SUFFIX).zip
+
+
+figshare-upload-works-elife:
+	$(MAKE) OUTPUT_SUFFIX=-elife figshare-upload-works
+
+
+figshare-upload-citations:
+	$(RUN) figshare-upload.sh /data/crossref-works$(OUTPUT_SUFFIX)-citations.tsv.gz
+
+
+figshare-upload-citations-elife:
+	$(MAKE) OUTPUT_SUFFIX=-elife figshare-upload-citations
 
 
 ci-build-and-test:
