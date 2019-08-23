@@ -122,10 +122,7 @@ extract-citations-from-works:
 
 
 extract-citations-from-works-elife:
-	$(MAKE) \
-		CROSSREF_WORKS_API_URL=$(ELIFE_CROSSREF_WORKS_API_URL) \
-		OUTPUT_SUFFIX=-elife \
-		extract-citations-from-works
+	$(MAKE) OUTPUT_SUFFIX=-elife extract-citations-from-works
 
 
 extract-summaries-from-works:
@@ -137,10 +134,7 @@ extract-summaries-from-works:
 
 
 extract-summaries-from-works-elife:
-	$(MAKE) \
-		CROSSREF_WORKS_API_URL=$(ELIFE_CROSSREF_WORKS_API_URL) \
-		OUTPUT_SUFFIX=-elife \
-		extract-summaries-from-works
+	$(MAKE) OUTPUT_SUFFIX=-elife extract-summaries-from-works
 
 
 ci-build-and-test:
