@@ -156,11 +156,22 @@ sort-and-remove-duplicates-from-summaries-elife:
 generate-csv-stats:
 	$(RUN) csv-stats.sh \
 		/data/crossref-works$(OUTPUT_SUFFIX)-summaries.tsv.gz \
-		/data/crossref-works$(OUTPUT_SUFFIX)-summaries-stat.tsv
+		/data/crossref-works$(OUTPUT_SUFFIX)-summaries-stat.tsv.gz
 
 
 generate-csv-stats-elife:
 	$(MAKE) OUTPUT_SUFFIX=-elife generate-csv-stats
+
+
+generate-csv-stats-grouped-by-type-and-publisher:
+	$(RUN) csv-stats.sh \
+		/data/crossref-works$(OUTPUT_SUFFIX)-summaries.tsv.gz \
+		/data/crossref-works$(OUTPUT_SUFFIX)-summaries-by-type-and-publisher-stat.tsv.gz \
+		--group-by=type,publisher
+
+
+generate-csv-stats-grouped-by-type-and-publisher-elife:
+	$(MAKE) OUTPUT_SUFFIX=-elife generate-csv-stats-grouped-by-type-and-publisher
 
 
 ci-build-and-test:
