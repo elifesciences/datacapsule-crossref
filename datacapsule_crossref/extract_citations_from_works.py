@@ -220,7 +220,7 @@ def extract_citations_from_works_direct(argv):
     args = get_args_parser().parse_args(argv)
 
     output_file = args.output_file
-    makedirs(os.path.basename(output_file), exist_ok=True)
+    makedirs(os.path.dirname(output_file), exist_ok=True)
 
     get_logger().info('output_file: %s', output_file)
 
