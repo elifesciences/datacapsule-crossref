@@ -113,6 +113,21 @@ download-works-elife:
 		download-works
 
 
+extract-citations-from-works:
+	$(RUN) python -m datacapsule_crossref.extract_citations_from_works \
+  --input-file=/data/crossref-works$(OUTPUT_SUFFIX).zip \
+  --output-file=/data/crossref-works$(OUTPUT_SUFFIX)-citations.tsv.gz \
+  --multi-processing \
+		$(ARGS)
+
+
+extract-citations-from-works-elife:
+	$(MAKE) \
+		CROSSREF_WORKS_API_URL=$(ELIFE_CROSSREF_WORKS_API_URL) \
+		OUTPUT_SUFFIX=-elife \
+		extract-citations-from-works
+
+
 ci-build-and-test:
 	$(MAKE) DOCKER_COMPOSE="$(DOCKER_COMPOSE_CI)" \
 		build build-dev test
