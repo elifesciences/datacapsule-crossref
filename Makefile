@@ -97,6 +97,10 @@ test: \
 	pytest
 
 
+shell:
+	$(RUN) bash
+
+
 download-works:
 	$(RUN) python -m datacapsule_crossref.download_works \
 		--base-url=$(CROSSREF_WORKS_API_URL) \
@@ -172,6 +176,22 @@ generate-csv-stats-grouped-by-type-and-publisher:
 
 generate-csv-stats-grouped-by-type-and-publisher-elife:
 	$(MAKE) OUTPUT_SUFFIX=-elife generate-csv-stats-grouped-by-type-and-publisher
+
+
+figshare-upload-works:
+	$(RUN) figshare-upload.sh /data/crossref-works$(OUTPUT_SUFFIX).zip
+
+
+figshare-upload-works-elife:
+	$(MAKE) OUTPUT_SUFFIX=-elife figshare-upload-works
+
+
+figshare-upload-citations:
+	$(RUN) figshare-upload.sh /data/crossref-works$(OUTPUT_SUFFIX)-citations.tsv.gz
+
+
+figshare-upload-citations-elife:
+	$(MAKE) OUTPUT_SUFFIX=-elife figshare-upload-citations
 
 
 ci-build-and-test:

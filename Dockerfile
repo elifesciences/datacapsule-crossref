@@ -26,3 +26,5 @@ COPY datacapsule_crossref ./datacapsule_crossref
 
 COPY scripts ./scripts
 ENV PATH=${PROJECT_FOLDER}/scripts:${PATH}
+
+ENV HOME=/root
