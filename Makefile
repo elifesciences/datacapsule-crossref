@@ -153,6 +153,16 @@ sort-and-remove-duplicates-from-summaries-elife:
 	$(MAKE) OUTPUT_SUFFIX=-elife sort-and-remove-duplicates-from-summaries
 
 
+generate-csv-stats:
+	$(RUN) csv-stats.sh \
+		/data/crossref-works$(OUTPUT_SUFFIX)-summaries.tsv.gz \
+		/data/crossref-works$(OUTPUT_SUFFIX)-summaries-stat.tsv
+
+
+generate-csv-stats-elife:
+	$(MAKE) OUTPUT_SUFFIX=-elife generate-csv-stats
+
+
 ci-build-and-test:
 	$(MAKE) DOCKER_COMPOSE="$(DOCKER_COMPOSE_CI)" \
 		build build-dev test
