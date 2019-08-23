@@ -119,9 +119,9 @@ download-works-elife:
 
 extract-citations-from-works:
 	$(RUN) python -m datacapsule_crossref.extract_citations_from_works \
-  --input-file=/data/crossref-works$(OUTPUT_SUFFIX).zip \
-  --output-file=/data/crossref-works$(OUTPUT_SUFFIX)-citations.tsv.gz \
-  --multi-processing \
+		--input-file=/data/crossref-works$(OUTPUT_SUFFIX).zip \
+		--output-file=/data/crossref-works$(OUTPUT_SUFFIX)-citations.tsv.gz \
+		--multi-processing \
 		$(ARGS)
 
 
@@ -131,10 +131,10 @@ extract-citations-from-works-elife:
 
 extract-summaries-from-works:
 	$(RUN) python -m datacapsule_crossref.extract_summaries_from_works \
-  --input-file=/data/crossref-works$(OUTPUT_SUFFIX).zip \
-  --output-file=/data/crossref-works$(OUTPUT_SUFFIX)-summaries.tsv.gz \
-  --multi-processing \
-	--debug
+		--input-file=/data/crossref-works$(OUTPUT_SUFFIX).zip \
+		--output-file=/data/crossref-works$(OUTPUT_SUFFIX)-summaries.tsv.gz \
+		--multi-processing \
+		--debug
 		$(ARGS)
 
 
