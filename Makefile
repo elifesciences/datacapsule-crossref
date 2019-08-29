@@ -24,6 +24,8 @@ EMAIL =
 
 OUTPUT_SUFFIX =
 
+SUMMARY_DATE = 2019-08-06
+
 ARGS =
 
 
@@ -228,6 +230,16 @@ jupyter-logs:
 
 jupyter-stop:
 	$(JUPYTER_DOCKER_COMPOSE) down
+
+
+download-summary-stats:
+	curl --output ./data/crossref-works-summaries-stat.tsv.gz \
+		https://storage.googleapis.com/elife-ml/citations/by-date/$(SUMMARY_DATE)/crossref-works-summaries-stat.tsv.gz
+	curl --output ./data/crossref-works-summaries-by-type-and-publisher-stat.tsv.gz \
+		https://storage.googleapis.com/elife-ml/citations/by-date/$(SUMMARY_DATE)/crossref-works-summaries-by-type-and-publisher-stat.tsv.gz
+	curl --output ./data/crossref-works-reference-stat.tsv.gz \
+		https://storage.googleapis.com/elife-ml/citations/by-date/$(SUMMARY_DATE)/crossref-works-reference-stat.tsv.gz
+	ls -lh ./data
 
 
 ci-build-and-test:
