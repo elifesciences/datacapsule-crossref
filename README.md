@@ -4,6 +4,8 @@ Retrieve and extract citations from Crossref data.
 
 The links to the latest dumps can be found in the [notebook](https://elifesci.org/crossref-data-notebook).
 
+If the notebook doesn't render within GitHub, you could try the following URL using [nbviewer](https://nbviewer.jupyter.org/github/elifesciences/datacapsule-crossref/blob/develop/notebooks/citation-stats.ipynb).
+
 ## Pre-requsites
 
 * Python 3
