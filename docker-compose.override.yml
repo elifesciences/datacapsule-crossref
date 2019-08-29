@@ -9,6 +9,6 @@ services:
       - USER=$USER
       - HOME=/$USER
 
-  datacapsule-crossref-jupyter:
+  jupyter:
     volumes:
       - .:/home/jovyan/datacapsule-crossref-jupyter

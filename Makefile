@@ -7,10 +7,13 @@ PIP = $(VENV)/bin/pip
 PYTHON = $(VENV)/bin/python
 
 USER_ID = $(shell id -u)
+GROUP_ID = $(shell id -g)
 
 RUN = $(DOCKER_COMPOSE) run --user $(USER_ID) --rm datacapsule-crossref
 DEV_RUN = $(DOCKER_COMPOSE) run --rm datacapsule-crossref-dev
 
+JUPYTER_DOCKER_COMPOSE = NB_UID="$(USER_ID)" NB_GID="$(GROUP_ID)" $(DOCKER_COMPOSE)
+JUPYTER_RUN = $(JUPYTER_DOCKER_COMPOSE) run --rm jupyter
 
 CROSSREF_WORKS_API_URL = https://api.crossref.org/works
 ELIFE_CROSSREF_WORKS_API_URL = https://api.crossref.org/prefixes/10.7554/works
@@ -203,6 +206,28 @@ figshare-upload-citations:
 
 figshare-upload-citations-elife:
 	$(MAKE) OUTPUT_SUFFIX=-elife figshare-upload-citations
+
+
+jupyter-build:
+	@if [ "$(NO_BUILD)" != "y" ]; then \
+		$(JUPYTER_DOCKER_COMPOSE) build jupyter; \
+	fi
+
+
+jupyter-shell: jupyter-build
+	$(JUPYTER_RUN) bash
+
+
+jupyter-start: jupyter-build
+	$(JUPYTER_DOCKER_COMPOSE) up -d jupyter
+
+
+jupyter-logs:
+	$(JUPYTER_DOCKER_COMPOSE) logs -f jupyter
+
+
+jupyter-stop:
+	$(JUPYTER_DOCKER_COMPOSE) down
 
 
 ci-build-and-test:

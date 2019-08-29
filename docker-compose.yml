@@ -27,7 +27,7 @@ services:
     depends_on:
       - datacapsule-crossref-base-dev
 
-  datacapsule-crossref-jupyter:
+  jupyter:
     build:
       context: .
       dockerfile: Dockerfile.jupyter
