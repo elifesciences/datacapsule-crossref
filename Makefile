@@ -20,6 +20,7 @@ MAX_RETRIES =
 EMAIL =
 
 OUTPUT_SUFFIX =
+FIGSHARE_PART_PREFIX = /tmp/part_
 
 ARGS =
 
@@ -190,7 +191,8 @@ generate-reference-stats-elife:
 
 
 figshare-upload-works:
-	$(RUN) figshare-upload.sh /data/crossref-works$(OUTPUT_SUFFIX).zip
+	$(RUN) figshare-upload.sh \
+		/data/crossref-works$(OUTPUT_SUFFIX).zip "" "$(FIGSHARE_PART_PREFIX)"
 
 
 figshare-upload-works-elife:
@@ -198,7 +200,8 @@ figshare-upload-works-elife:
 
 
 figshare-upload-citations:
-	$(RUN) figshare-upload.sh /data/crossref-works$(OUTPUT_SUFFIX)-citations.tsv.gz
+	$(RUN) figshare-upload.sh \
+		/data/crossref-works$(OUTPUT_SUFFIX)-citations.tsv.gz "" "$(FIGSHARE_PART_PREFIX)"
 
 
 figshare-upload-citations-elife:
