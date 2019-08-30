@@ -26,10 +26,11 @@ fi
 ACCESS_TOKEN=$FIGSHARE_ACCESS_TOKEN
 
 FILE_PATH="$1"
-ITEM_ID=$2
+ITEM_ID=${2:-$FIGSHARE_ITEM_ID}
+PART_PREFIX="${3:-$FIGSHARE_PART_PREFIX}"
 
 if [ -z "$FILE_PATH" ]; then
-  echo "Usage: $0 <file path> [<item id>]"
+  echo "Usage: $0 <file path> [<item id>] [<part prefix>]"
   echo ''
   echo 'A new item will be created if item id is not provided.'
   echo ''
@@ -39,13 +40,18 @@ if [ -z "$FILE_PATH" ]; then
   exit 2
 fi
 
-# exit 0
-
 FILE_NAME=$(basename "$FILE_PATH")
 
-PART_PREFIX="$(dirname "$FILE_PATH")/part_"
+if [ -z "${PART_PREFIX}" ]; then
+  PART_PREFIX="$(dirname "$FILE_PATH")/part_"
+fi
 
 echo "PART_PREFIX=${PART_PREFIX}"
+
+if ls "${PART_PREFIX}"* 1> /dev/null 2>&1; then
+  echo "existing part files found, please review and remove them first (prefix: ${PART_PREFIX})"
+  exit 2
+fi
 
 # ####################################################################################
 
