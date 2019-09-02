@@ -25,6 +25,9 @@ EMAIL =
 OUTPUT_SUFFIX =
 FIGSHARE_PART_PREFIX = /tmp/part_
 
+BQ_PROJECT =
+BQ_DATASET =
+
 SUMMARY_DATE = 2019-08-06
 
 ARGS =
@@ -193,6 +196,54 @@ generate-reference-stats:
 
 generate-reference-stats-elife:
 	$(MAKE) OUTPUT_SUFFIX=-elife generate-reference-stats
+
+
+.require-BQ_PROJECT:
+	@if [ -z "$(BQ_PROJECT)" ]; then \
+		echo "BQ_PROJECT required"; \
+		exit 1; \
+	fi
+
+
+.require-BQ_DATASET:
+	@if [ -z "$(BQ_DATASET)" ]; then \
+		echo "BQ_DATASET required"; \
+		exit 1; \
+	fi
+
+
+bq-upload-citations: .require-BQ_PROJECT .require-BQ_DATASET
+	bq --project "$(BQ_PROJECT)" \
+		load --autodetect --replace \
+		--source_format=CSV \
+		--format=csv \
+		--skip_leading_rows=1 \
+		--quote='' \
+		--field_delimiter=tab \
+		"$(BQ_DATASET).citation_links" \
+		"./data/crossref-works$(OUTPUT_SUFFIX)-citations.tsv.gz" \
+		citing_doi,cited_doi
+
+
+bq-upload-citations-elife:
+	$(MAKE) OUTPUT_SUFFIX=-elife bq-upload-citations
+
+
+bq-upload-summaries: .require-BQ_PROJECT .require-BQ_DATASET
+	bq --project "$(BQ_PROJECT)" \
+		load --autodetect --replace \
+		--source_format=CSV \
+		--format=csv \
+		--skip_leading_rows=1 \
+		--quote='' \
+		--field_delimiter=tab \
+		"$(BQ_DATASET).work_summary" \
+		"./data/crossref-works$(OUTPUT_SUFFIX)-summaries.tsv.gz" \
+		doi,title,reference_count:INT64,referenced_by_count:INT64,created:TIMESTAMP,type,publisher,container_title,author_count:INT64,first_subject_area,subject_areas,has_references:BOOL,num_references:INT64,num_citations_without_doi:INT64,num_duplicate_citation_dois:INT64,cited_dois,references
+
+
+bq-upload-summaries-elife:
+	$(MAKE) OUTPUT_SUFFIX=-elife bq-upload-summaries
 
 
 figshare-upload-works:
