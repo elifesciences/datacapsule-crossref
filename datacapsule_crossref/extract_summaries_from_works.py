@@ -72,7 +72,15 @@ def get_args_parser():
 
 
 def clean_text(s):
-    return s.replace('\n', ' ').replace('\t', ' ').replace('  ', ' ').strip() if s else s
+    return (
+        s.replace('\n', ' ')
+        .replace('\r', ' ')
+        .replace('\t', ' ')
+        .replace('  ', ' ')
+        .strip()
+        if s
+        else s
+    )
 
 
 def list_to_text(l):
