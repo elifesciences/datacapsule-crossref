@@ -13,3 +13,6 @@ class TestCleanText:
 
     def test_should_replace_double_space_with_single_space(self):
         assert clean_text('a  b') == 'a b'
+
+    def test_should_replace_multiple_whitespace_with_single_space(self):
+        assert clean_text('a \r\n b') == 'a b'
